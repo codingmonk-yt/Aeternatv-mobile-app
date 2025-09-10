@@ -1,29 +1,40 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import React, { useState } from 'react';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import BottomNavigation from '../components/BottomNavigation';
+import HomePage from './index';
+import MoviesPage from './movies';
+import SearchPage from './search';
+import WishlistPage from './wishlist';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  const [activeTab, setActiveTab] = useState('home');
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  const renderPage = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomePage />;
+      case 'movies':
+        return <MoviesPage />;
+      case 'search':
+        return <SearchPage />;
+      case 'wishlist':
+        return <WishlistPage />;
+      default:
+        return <HomePage />;
+    }
+  };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <>
+      <StatusBar style="light" backgroundColor="#000000" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }}>
+        <View style={{ flex: 1 }}>
+          {renderPage()}
+        </View>
+        <BottomNavigation activeTab={activeTab} onTabPress={setActiveTab} />
+      </SafeAreaView>
+    </>
   );
 }

@@ -3,7 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import LiveTvDetailsPage from './live-tv-details';
 import MoviesDetailsPage from './movies-details';
+import SeriesDetailsPage from './series-details';
 
 const { width, height } = Dimensions.get('window');
 
@@ -46,25 +48,38 @@ function CategoryCard({ title, subtitle, icon, onPress }: CategoryCardProps) {
 
 export default function MoviesPage() {
   const router = useRouter();
-  const [showMoviesDetails, setShowMoviesDetails] = useState(false);
+  const [currentPage, setCurrentPage] = useState('main');
 
   const handleCategoryPress = (category: string) => {
     console.log(`Category pressed: ${category}`);
     if (category === 'Movies') {
       console.log('Showing movies details...');
-      setShowMoviesDetails(true);
+      setCurrentPage('movies');
+    } else if (category === 'Series') {
+      console.log('Showing series details...');
+      setCurrentPage('series');
+    } else if (category === 'LiveTV') {
+      console.log('Showing live TV details...');
+      setCurrentPage('live-tv');
     } else {
       console.log(`Pressed ${category}`);
-      // TODO: Navigate to other category pages
     }
   };
 
   const handleBackPress = () => {
-    setShowMoviesDetails(false);
+    setCurrentPage('main');
   };
 
-  if (showMoviesDetails) {
+  if (currentPage === 'movies') {
     return <MoviesDetailsPage onBackPress={handleBackPress} />;
+  }
+
+  if (currentPage === 'series') {
+    return <SeriesDetailsPage onBackPress={handleBackPress} />;
+  }
+
+  if (currentPage === 'live-tv') {
+    return <LiveTvDetailsPage onBackPress={handleBackPress} />;
   }
 
   return (

@@ -10,11 +10,12 @@ import WishlistPage from './wishlist';
 
 export default function RootLayout() {
   const [activeTab, setActiveTab] = useState('home');
+  const [hideBottomNav, setHideBottomNav] = useState(false);
 
   const renderPage = () => {
     switch (activeTab) {
       case 'home':
-        return <HomePage />;
+        return <HomePage onToggleBottomNav={setHideBottomNav} />;
       case 'movies':
         return <MoviesPage />;
       case 'search':
@@ -22,7 +23,7 @@ export default function RootLayout() {
       case 'wishlist':
         return <WishlistPage />;
       default:
-        return <HomePage />;
+        return <HomePage onToggleBottomNav={setHideBottomNav} />;
     }
   };
 
@@ -33,7 +34,7 @@ export default function RootLayout() {
         <View style={{ flex: 1 }}>
           {renderPage()}
         </View>
-        <BottomNavigation activeTab={activeTab} onTabPress={setActiveTab} />
+        {!hideBottomNav && <BottomNavigation activeTab={activeTab} onTabPress={setActiveTab} />}
       </SafeAreaView>
     </>
   );

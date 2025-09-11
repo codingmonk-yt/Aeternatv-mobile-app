@@ -1,14 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import MovieCard, { MovieItem } from '../components/MovieCard';
+import MovieDetailsScreen from './movie-details';
 import NewReleasedPage from './new-released';
 
 
@@ -39,6 +40,66 @@ const recentlyWatchedData = [
   }
 ];
 
+// Extended movie data with cast information for details screen
+const movieDetailsData = {
+  1: {
+    id: 1,
+    title: 'MOBLAND',
+    subtitle: 'Paramount+',
+    platform: 'Paramount+',
+    releaseDate: 'MARCH 14',
+    image: 'https://images.pexels.com/photos/1200450/pexels-photo-1200450.jpeg?auto=compress&cs=tinysrgb&w=400',
+    genre: 'Adventure, Action, Sci-Fi',
+    rating: 7.2,
+    year: 2025,
+    duration: '102 min',
+    description: 'Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within. They work together to keep the secret in the gorge.',
+    cast: [
+      { name: 'Miles Teller', character: 'Jeff', image: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Anya Taylor-Joy', character: 'Sharon', image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Sigourney Weaver', character: 'Mary', image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Tom Hanks', character: 'Sonia', image: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Emma Stone', character: 'Lisa', image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150' }
+    ]
+  },
+  2: {
+    id: 2,
+    title: 'ADOLESCENCE',
+    subtitle: 'NETFLIX',
+    platform: 'NETFLIX',
+    releaseDate: 'MARCH 13',
+    image: 'https://images.pexels.com/photos/3945317/pexels-photo-3945317.jpeg?auto=compress&cs=tinysrgb&w=400',
+    genre: 'Drama, Coming-of-age',
+    rating: 8.1,
+    year: 2025,
+    duration: '95 min',
+    description: 'A coming-of-age story about a young person navigating the complexities of adolescence, friendship, and self-discovery in a modern world.',
+    cast: [
+      { name: 'Zendaya', character: 'Maya', image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Timothée Chalamet', character: 'Alex', image: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Florence Pugh', character: 'Emma', image: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150' }
+    ]
+  },
+  3: {
+    id: 3,
+    title: 'TITANIC',
+    subtitle: 'DISNEY+',
+    platform: 'DISNEY+',
+    releaseDate: 'DECEMBER 19',
+    image: 'https://images.pexels.com/photos/3945317/pexels-photo-3945317.jpeg?auto=compress&cs=tinysrgb&w=400',
+    genre: 'Romance, Drama, Historical',
+    rating: 9.2,
+    year: 1997,
+    duration: '194 min',
+    description: 'A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the luxurious, ill-fated R.M.S. Titanic.',
+    cast: [
+      { name: 'Leonardo DiCaprio', character: 'Jack Dawson', image: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Kate Winslet', character: 'Rose DeWitt Bukater', image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150' },
+      { name: 'Billy Zane', character: 'Caledon Hockley', image: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150' }
+    ]
+  }
+};
+
 const newReleasedData = [
   {
     id: 4,
@@ -63,14 +124,34 @@ const newReleasedData = [
 
 const categoryTabs = ['New', 'Movies', 'TV shows', 'Kids'];
 
-export default function HomePage() {
+interface HomePageProps {
+  onToggleBottomNav?: (hide: boolean) => void;
+}
+
+export default function HomePage({ onToggleBottomNav }: HomePageProps) {
   const [activeCategory, setActiveCategory] = useState('New');
   const [showNewReleased, setShowNewReleased] = useState(false);
   const [showRecentlyWatched, setShowRecentlyWatched] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<any>(null);
 
   const handleCardPress = (item: MovieItem) => {
-    // Handle card press - you can navigate to detail page or perform other actions
-    console.log('Card pressed:', item.title);
+    // Show movie details screen when a card is pressed
+    const movieData = movieDetailsData[item.id as keyof typeof movieDetailsData];
+    if (movieData) {
+      setSelectedMovie(movieData);
+      onToggleBottomNav?.(true); // Hide bottom navigation
+    }
+  };
+
+  const handlePlayMovie = () => {
+    // Handle play button press
+    console.log('Playing movie:', selectedMovie?.title);
+    // You can add video player logic here
+  };
+
+  const handleBackFromMovieDetails = () => {
+    setSelectedMovie(null);
+    onToggleBottomNav?.(false); // Show bottom navigation
   };
 
   const handleViewAllNewReleased = () => {
@@ -80,6 +161,17 @@ export default function HomePage() {
   const handleViewAllRecentlyWatched = () => {
     setShowRecentlyWatched(true);
   };
+
+  // Show Movie Details page when a movie card is clicked
+  if (selectedMovie) {
+    return (
+      <MovieDetailsScreen
+        movie={selectedMovie}
+        onBack={handleBackFromMovieDetails}
+        onPlay={handlePlayMovie}
+      />
+    );
+  }
 
   // Show New Released page when "View all" is clicked
   if (showNewReleased) {

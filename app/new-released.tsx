@@ -85,6 +85,7 @@ export default function NewReleasedPage({
   onBack?: () => void;
   pageType?: 'new-released' | 'recently-watched';
 }) {
+      
   const [selectedFilter, setSelectedFilter] = useState(1); // Default to "Lable 2025"
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedSort, setSelectedSort] = useState(0); // Default to "Rates"

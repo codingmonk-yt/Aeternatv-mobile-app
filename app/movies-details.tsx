@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import MovieInfoPage from './movie-info';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 60) / 3; // 3 columns with margins
@@ -62,6 +63,8 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('New');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMovieInfo, setShowMovieInfo] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<any>(null);
 
   const categories = ['New', 'Sci-Fi', 'Comedy', 'Romance', 'Thriller', 'Action', 'Adventure', 'Animation', 'Biography', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Sport', 'War', 'Western'];
 
@@ -70,7 +73,16 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
       id: 1,
       title: 'Severance',
       platform: 'Apple TV+',
-      imageUrl: 'https://snworksceo.imgix.net/ttd/df199939-19cc-41c1-a949-a86557ec949f.sized-1000x1000.png?w=1000&dpr=2'
+      imageUrl: 'https://snworksceo.imgix.net/ttd/df199939-19cc-41c1-a949-a86557ec949f.sized-1000x1000.png?w=1000&dpr=2',
+      genre: 'Drama, Sci-Fi, Thriller',
+      year: '2022',
+      duration: '45 min',
+      rating: '8.7',
+      synopsis: 'Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.',
+      cast: [
+        { name: 'Adam Scott', character: 'Mark Scout', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' },
+        { name: 'Patricia Arquette', character: 'Harmony Cobel', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' }
+      ]
     },
     {
       id: 2,
@@ -100,7 +112,17 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
       id: 6,
       title: 'The Gorge',
       platform: 'Apple TV+',
-      imageUrl: 'https://m.media-amazon.com/images/S/pv-target-images/aab0322a11698c77fe0dc30131b2ffdba59a73d3544a0b25cf5cb7d20e029f84.jpg'
+      imageUrl: 'https://m.media-amazon.com/images/S/pv-target-images/aab0322a11698c77fe0dc30131b2ffdba59a73d3544a0b25cf5cb7d20e029f84.jpg',
+      genre: 'Adventure, Action, Sci-Fi',
+      year: '2025',
+      duration: '105 min',
+      rating: '7.2',
+      synopsis: 'Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within. They work together to keep the secret in the gorge.',
+      cast: [
+        { name: 'Miles Teller', character: 'Jeff', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' },
+        { name: 'Anya Taylor-Joy', character: 'Sharon', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' },
+        { name: 'Sigourney Weaver', character: 'Mary', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' }
+      ]
     },
     {
       id: 7,
@@ -168,8 +190,18 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
 
   const handleMoviePress = (movie: any) => {
     console.log('Movie pressed:', movie.title);
-    // TODO: Navigate to movie details
+    setSelectedMovie(movie);
+    setShowMovieInfo(true);
   };
+
+  const handleMovieInfoBackPress = () => {
+    setShowMovieInfo(false);
+    setSelectedMovie(null);
+  };
+
+  if (showMovieInfo && selectedMovie) {
+    return <MovieInfoPage onBackPress={handleMovieInfoBackPress} movieData={selectedMovie} />;
+  }
 
   return (
     <View style={styles.container}>

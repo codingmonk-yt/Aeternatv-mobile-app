@@ -441,8 +441,31 @@ export default function SearchPage() {
   // Filter results based on active tab
   const getFilteredResults = () => {
     const allResults = [...mockSearchResults, ...mockSeriesResults, ...mockLiveTvResults];
+    
+    // If no search query, show trending/popular content for the active tab
+    if (searchQuery === "") {
+      switch (activeTab) {
+        case "Movies":
+          // Show trending movies (first 8 movies with highest ratings)
+          return mockSearchResults
+            .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
+            .slice(0, 8);
+        case "Series":
+          // Show trending series (first 6 series with highest ratings)
+          return mockSeriesResults
+            .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
+            .slice(0, 6);
+        case "Live TV":
+          // Show popular live TV channels
+          return mockLiveTvResults.slice(0, 8);
+        default:
+          return [];
+      }
+    }
+    
+    // If there's a search query, filter normally
     return allResults.filter(result => {
-      const matchesQuery = searchQuery === "" || result.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesQuery = result.title.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesTab = result.type === activeTab || (activeTab === "Live TV" && result.type === "Live TV");
       return matchesQuery && matchesTab;
     });
@@ -505,6 +528,17 @@ export default function SearchPage() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.resultsContent}
         >
+          {/* Section Title */}
+          {searchQuery === "" && (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {activeTab === "Movies" && "Trending Movies"}
+                {activeTab === "Series" && "Trending Series"}
+                {activeTab === "Live TV" && "Popular Channels"}
+              </Text>
+            </View>
+          )}
+          
           {filteredResults.map((result) => (
             <SearchResultItem
               key={result.id}
@@ -596,6 +630,15 @@ const styles = StyleSheet.create({
   resultsContent: {
     paddingHorizontal: 20,
     paddingBottom: 100,
+  },
+  sectionHeader: {
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   resultItem: {
     flexDirection: "row",

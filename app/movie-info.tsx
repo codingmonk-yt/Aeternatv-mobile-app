@@ -1,20 +1,20 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-    Alert,
-    Dimensions,
-    Image,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 interface MovieInfoPageProps {
   onBackPress?: () => void;
@@ -36,7 +36,10 @@ interface MovieInfoPageProps {
   };
 }
 
-export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageProps) {
+export default function MovieInfoPage({
+  onBackPress,
+  movieData,
+}: MovieInfoPageProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [showFullSynopsis, setShowFullSynopsis] = useState(false);
@@ -44,36 +47,42 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
   // Default movie data if none provided
   const movie = movieData || {
     id: 1,
-    title: 'The Gorge',
-    platform: 'Apple TV+',
-    imageUrl: 'https://m.media-amazon.com/images/S/pv-target-images/aab0322a11698c77fe0dc30131b2ffdba59a73d3544a0b25cf5cb7d20e029f84.jpg',
-    genre: 'Adventure, Action, Sci-Fi',
-    year: '2025',
-    duration: '105 min',
-    rating: '7.2',
-    synopsis: 'Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within. They work together to keep the secret in the gorge.',
+    title: "The Gorge",
+    platform: "Apple TV+",
+    imageUrl:
+      "https://m.media-amazon.com/images/S/pv-target-images/aab0322a11698c77fe0dc30131b2ffdba59a73d3544a0b25cf5cb7d20e029f84.jpg",
+    genre: "Adventure, Action, Sci-Fi",
+    year: "2025",
+    duration: "105 min",
+    rating: "7.2",
+    synopsis:
+      "Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within. They work together to keep the secret in the gorge.",
     cast: [
       {
-        name: 'Miles Teller',
-        character: 'Jeff',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BMTQ5MDU5MTktMDZkMy00NDU1LWIxM2UtODg5OGFiNmRhNDBjXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
+        name: "Miles Teller",
+        character: "Jeff",
+        imageUrl:
+          "https://m.media-amazon.com/images/M/MV5BMTQ5MDU5MTktMDZkMy00NDU1LWIxM2UtODg5OGFiNmRhNDBjXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
       },
       {
-        name: 'Anya Taylor-Joy',
-        character: 'Sharon',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg'
+        name: "Anya Taylor-Joy",
+        character: "Sharon",
+        imageUrl:
+          "https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg",
       },
       {
-        name: 'Sigourney Weaver',
-        character: 'Mary',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg'
+        name: "Sigourney Weaver",
+        character: "Mary",
+        imageUrl:
+          "https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg",
       },
       {
-        name: 'Sonia',
-        character: 'Sonia',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg'
-      }
-    ]
+        name: "Sonia",
+        character: "Sonia",
+        imageUrl:
+          "https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg",
+      },
+    ],
   };
 
   const handleBackPress = () => {
@@ -85,62 +94,87 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
   };
 
   const handlePlayPress = () => {
-    console.log('Play button pressed for:', movie.title);
+    console.log("Play button pressed for:", movie.title);
     // TODO: Navigate to video player
   };
 
   const handleSharePress = async () => {
     try {
       const result = await Share.share({
-        message: `Check out "${movie.title}" on ${movie.platform}! ${movie.synopsis?.substring(0, 100)}...`,
+        message: `Check out "${movie.title}" on ${
+          movie.platform
+        }! ${movie.synopsis?.substring(0, 100)}...`,
         title: movie.title,
       });
-      
+
       if (result.action === Share.sharedAction) {
-        console.log('Content shared successfully');
+        console.log("Content shared successfully");
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to share content');
-      console.error('Share error:', error);
+      Alert.alert("Error", "Failed to share content");
+      console.error("Share error:", error);
     }
   };
 
   const handleBookmarkPress = () => {
-    console.log('Bookmark button pressed');
+    console.log("Bookmark button pressed");
     // TODO: Implement bookmark functionality
   };
 
-  const truncatedSynopsis = movie.synopsis && movie.synopsis.length > 150 
-    ? movie.synopsis.substring(0, 150) + '...'
-    : movie.synopsis;
+  const truncatedSynopsis =
+    movie.synopsis && movie.synopsis.length > 150
+      ? movie.synopsis.substring(0, 150) + "..."
+      : movie.synopsis;
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Movie Poster Banner - Full Screen from Top */}
         <View style={[styles.posterContainer, { paddingTop: insets.top }]}>
           {/* Image with Gradient Overlay */}
           <View style={styles.imageContainer}>
-            <Image source={{ uri: movie.imageUrl }} style={styles.posterImage} />
+            <Image
+              source={{ uri: movie.imageUrl }}
+              style={styles.posterImage}
+            />
             <LinearGradient
-              colors={['rgb(0, 0, 0)', 'rgba(0, 0, 0, 0.65)', 'rgba(0, 0, 0, 0.3)', 'transparent']}
+              colors={[
+                "rgba(0, 0, 0, 0.8)",
+                "rgba(0, 0, 0, 0.4)",
+                "transparent",
+                "transparent",
+                "rgba(0, 0, 0, 0.4)",
+                "rgba(0, 0, 0, 0.8)",
+              ]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 0.4 }}
+              end={{ x: 0, y: 1 }}
               style={styles.gradientOverlay}
             />
           </View>
 
           {/* Header with back button and action buttons - Positioned above banner */}
           <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBackPress}
+            >
               <Text style={styles.backIcon}>‹</Text>
             </TouchableOpacity>
-            
+
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleSharePress}
+              >
                 <Text style={styles.actionIcon}>↗</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPress}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleBookmarkPress}
+              >
                 <Text style={styles.actionIcon}>♡</Text>
               </TouchableOpacity>
             </View>
@@ -154,7 +188,7 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
           {/* Play Button */}
           <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
             <LinearGradient
-              colors={['#A259FF', '#562199']}
+              colors={["#A259FF", "#562199"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.playButtonGradient}
@@ -164,14 +198,14 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
           </TouchableOpacity>
 
           {/* Movie Title Overlay */}
-          <View style={styles.titleOverlay}>
+          {/* <View style={styles.titleOverlay}>
             <Text style={styles.movieTitle}>{movie.title}</Text>
             <Text style={styles.movieTagline}>THE WORLD'S MOST DANGEROUS SECRET LIES BETWEEN THEM</Text>
             <Text style={styles.castNames}>
               {movie.cast?.slice(0, 3).map(actor => actor.name).join(', ')}
             </Text>
             <Text style={styles.originalFilm}>AN APPLE ORIGINAL FILM BY SKYDANCE</Text>
-          </View>
+          </View> */}
         </View>
 
         {/* Movie Details */}
@@ -201,9 +235,11 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
               {showFullSynopsis ? movie.synopsis : truncatedSynopsis}
             </Text>
             {movie.synopsis && movie.synopsis.length > 150 && (
-              <TouchableOpacity onPress={() => setShowFullSynopsis(!showFullSynopsis)}>
+              <TouchableOpacity
+                onPress={() => setShowFullSynopsis(!showFullSynopsis)}
+              >
                 <Text style={styles.readMoreText}>
-                  {showFullSynopsis ? 'Read less' : 'Read more'}
+                  {showFullSynopsis ? "Read less" : "Read more"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -212,10 +248,17 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
           {/* Top Cast */}
           <View style={styles.castContainer}>
             <Text style={styles.castTitle}>Top cast</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.castScrollView}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.castScrollView}
+            >
               {movie.cast?.map((actor, index) => (
                 <View key={index} style={styles.castMember}>
-                  <Image source={{ uri: actor.imageUrl }} style={styles.castImage} />
+                  <Image
+                    source={{ uri: actor.imageUrl }}
+                    style={styles.castImage}
+                  />
                   <Text style={styles.castName}>{actor.name}</Text>
                   <Text style={styles.castCharacter}>{actor.character}</Text>
                 </View>
@@ -231,25 +274,25 @@ export default function MovieInfoPage({ onBackPress, movieData }: MovieInfoPageP
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   posterContainer: {
     height: height * 0.6,
-    width: '100%',
+    width: "100%",
   },
   imageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
+    position: "relative",
+    width: "100%",
+    height: "100%",
   },
   posterImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
     objectFit: "contain",
   },
   gradientOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -257,13 +300,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   header: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 20,
     zIndex: 10,
@@ -272,54 +315,54 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   backIcon: {
     fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: '300',
+    color: "#FFFFFF",
+    fontWeight: "300",
   },
   headerActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   actionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   actionIcon: {
     fontSize: 18,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   platformLogo: {
-    position: 'absolute',
+    position: "absolute",
     top: 100,
     left: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     zIndex: 5,
   },
   platformText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   playButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
     transform: [{ translateX: -30 }, { translateY: -30 }],
     width: 60,
     height: 60,
@@ -330,9 +373,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#A259FF',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#A259FF",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -343,113 +386,113 @@ const styles = StyleSheet.create({
   },
   playIcon: {
     fontSize: 24,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     marginLeft: 2,
   },
   titleOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     padding: 20,
     zIndex: 5,
   },
   movieTitle: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   movieTagline: {
     fontSize: 14,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   castNames: {
     fontSize: 12,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 4,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   originalFilm: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
+    color: "rgba(255, 255, 255, 0.8)",
+    textAlign: "center",
   },
   movieDetails: {
     paddingHorizontal: 20,
     paddingBottom: 100,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
     paddingTop: 20,
   },
   movieTitleText: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 8,
   },
   genreText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: "rgba(255, 255, 255, 0.7)",
     marginBottom: 20,
   },
   infoBoxes: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 24,
   },
   infoBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
     flex: 1,
     marginHorizontal: 4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   infoLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: "rgba(255, 255, 255, 0.6)",
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   synopsisContainer: {
     marginBottom: 32,
   },
   synopsisText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
     lineHeight: 24,
     marginBottom: 8,
   },
   readMoreText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textDecorationLine: 'underline',
+    color: "rgba(255, 255, 255, 0.7)",
+    textDecorationLine: "underline",
   },
   castContainer: {
     marginBottom: 20,
   },
   castTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 16,
   },
   castScrollView: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   castMember: {
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 20,
     width: 80,
   },
@@ -457,19 +500,19 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: "#2a2a2a",
     marginBottom: 8,
   },
   castName: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 2,
   },
   castCharacter: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
   },
 });

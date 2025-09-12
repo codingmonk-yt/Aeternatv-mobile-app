@@ -2,15 +2,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Dimensions,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import SeriesInfoPage from './series-info';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 60) / 3; // 3 columns with margins
@@ -62,6 +63,8 @@ export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProp
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('New');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSeriesInfo, setShowSeriesInfo] = useState(false);
+  const [selectedSeries, setSelectedSeries] = useState<any>(null);
 
   const categories = ['New', 'Sci-Fi', 'Comedy', 'Romance', 'Thriller', 'Action', 'Adventure', 'Animation', 'Biography', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Sport', 'War', 'Western'];
 
@@ -136,7 +139,43 @@ export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProp
       id: 12,
       title: 'The Last of Us',
       platform: 'HBO Max',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BYWI3ODJlMzktY2U5NC00ZjdlLWE1MGItNWQxZDk3NWNjN2RhXkEyXkFqcGc@._V1_.jpg'
+      imageUrl: 'https://m.media-amazon.com/images/M/MV5BYWI3ODJlMzktY2U5NC00ZjdlLWE1MGItNWQxZDk3NWNjN2RhXkEyXkFqcGc@._V1_.jpg',
+      seasons: [
+        {
+          seasonNumber: 1,
+          seasonName: "Season 1",
+          episodes: [
+            {
+              id: 1,
+              title: "When You're Lost in the Darkness",
+              episodeNumber: "E01",
+              duration: "81 m",
+              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
+            },
+            {
+              id: 2,
+              title: "Infected",
+              episodeNumber: "E02",
+              duration: "50 m",
+              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
+            },
+            {
+              id: 3,
+              title: "Long, Long Time",
+              episodeNumber: "E03",
+              duration: "75 m",
+              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
+            },
+            {
+              id: 4,
+              title: "Please Hold to My Hand",
+              episodeNumber: "E04",
+              duration: "45 m",
+              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
+            },
+          ],
+        },
+      ],
     },
     {
       id: 13,
@@ -168,8 +207,287 @@ export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProp
 
   const handleSeriesPress = (series: any) => {
     console.log('Series pressed:', series.title);
-    // TODO: Navigate to series details
+    
+    // Hardcoded Breaking Bad data for now - will be replaced with API calls later
+    const breakingBadData = {
+      seasons: [
+        {
+          air_date: "2025-08-14",
+          episode_count: "7",
+          name: "Temporada 1",
+          overview: "",
+          season_number: "1",
+          cover: "",
+          cover_big: "",
+          vote_average: 0
+        },
+        {
+          air_date: "2025-08-14",
+          episode_count: "13",
+          name: "Temporada 2",
+          overview: "",
+          season_number: "2",
+          cover: "",
+          cover_big: "",
+          vote_average: 0
+        },
+        {
+          air_date: "2025-08-14",
+          episode_count: "13",
+          name: "Temporada 3",
+          overview: "",
+          season_number: "3",
+          cover: "",
+          cover_big: "",
+          vote_average: 0
+        },
+        {
+          air_date: "2025-08-14",
+          episode_count: "13",
+          name: "Temporada 4",
+          overview: "",
+          season_number: "4",
+          cover: "",
+          cover_big: "",
+          vote_average: 0
+        },
+        {
+          air_date: "2025-08-14",
+          episode_count: "16",
+          name: "Temporada 5",
+          overview: "",
+          season_number: "5",
+          cover: "",
+          cover_big: "",
+          vote_average: 0
+        }
+      ],
+      info: {
+        name: "Breaking Bad: A Química do Mal [L] (2008)",
+        title: "Breaking Bad: A Química do Mal [L]",
+        year: "2008",
+        cover: "https://image.tmdb.org/t/p/w780/30erzlzIOtOK3k3T3BAl1GiVMP1.jpg",
+        plot: "Ao saber que tem câncer, um professor passa a fabricar metanfetamina pelo futuro da família, mudando o destino de todos.",
+        cast: "Bryan Cranston, Aaron Paul, Anna Gunn, RJ Mitte, Dean Norris",
+        director: "Michelle MacLaren",
+        genre: "Drama, Crime",
+        release_date: "2008-01-20",
+        releaseDate: "2008-01-20",
+        last_modified: "1736505758",
+        rating: "9",
+        rating_5based: 4.5,
+        backdrop_path: [
+          "https://image.tmdb.org/t/p/w1280/9faGSFi5jam6pDWGNd0p8JcJgXQ.jpg"
+        ],
+        youtube_trailer: "XrVlzrRECY4",
+        episode_run_time: "45",
+        category_id: "169",
+        category_ids: [169]
+      },
+      episodes: {
+        "1": [
+          {
+            id: "881475",
+            episode_num: "1",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E01",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Um professor de química do ensino médio começa a vender drogas para sustentar sua família.",
+              duration_secs: 3501,
+              duration: "00:58:21",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/ydlY3iPfeOAvu8gVqrxPoMvzNCn.jpg",
+              bitrate: 0,
+              rating: 8.083,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/ydlY3iPfeOAvu8gVqrxPoMvzNCn.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          },
+          {
+            id: "881476",
+            episode_num: "2",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E02",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "O saldo da primeira transação fracassada de Walt e Jesse é de dois cadáveres e sua desova. Skyler suspeita que seu marido esteja tramando algo.",
+              duration_secs: 2903,
+              duration: "00:48:23",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/tjDNvbokPLtEnpFyFPyXMOd6Zr1.jpg",
+              bitrate: 0,
+              rating: 8.102,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/tjDNvbokPLtEnpFyFPyXMOd6Zr1.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          },
+          {
+            id: "881477",
+            episode_num: "3",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E03",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Enquanto Walt limpa a bagunça que foi deixada após a primeira venda de drogas, ele pensa em contar a Skyler o segredo sobre a sua doença.",
+              duration_secs: 2903,
+              duration: "00:48:23",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/2kBeBlxGqBOdWlKwzAxiwkfU5on.jpg",
+              bitrate: 0,
+              rating: 8.158,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/2kBeBlxGqBOdWlKwzAxiwkfU5on.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          },
+          {
+            id: "881478",
+            episode_num: "4",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E04",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Forçado a revelar a verdade sobre sua doença, Walt enfrenta o dilema de pagar pelos caros tratamentos de câncer.",
+              duration_secs: 2905,
+              duration: "00:48:25",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/i5BAJVhuIWfkoSqDID6FnQNCTVc.jpg",
+              bitrate: 0,
+              rating: 7.828,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/i5BAJVhuIWfkoSqDID6FnQNCTVc.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          },
+          {
+            id: "881479",
+            episode_num: "5",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E05",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Skyler organiza uma intervenção para persuadir Walt a aceitar a generosa oferta de seu antigo parceiro de pesquisa de pagar pelo seu tratamento de câncer.",
+              duration_secs: 2889,
+              duration: "00:48:09",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/82G3wZgEvZLKcte6yoZJahUWBtx.jpg",
+              bitrate: 0,
+              rating: 8.144,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/82G3wZgEvZLKcte6yoZJahUWBtx.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          },
+          {
+            id: "881480",
+            episode_num: "6",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E06",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Conforme os efeitos colaterais e os custos do seu tratamento aumentam rapidamente, Walt exige que Jesse encontre um grande comprador para suas drogas, deixando Jesse encrencado com um perigoso ex-presidiário.",
+              duration_secs: 2897,
+              duration: "00:48:17",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/hyYwqbmcHn3fuxWE3h4IhZZbkU3.jpg",
+              bitrate: 0,
+              rating: 8.879,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/hyYwqbmcHn3fuxWE3h4IhZZbkU3.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          },
+          {
+            id: "881481",
+            episode_num: "7",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E07",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Após Jesse escapar da morte, Walt concorda em produzir mais drogas para Tuco, enquanto Skyler suspeita que sua irmã roubou um presente de chá de bebê.",
+              duration_secs: 2873,
+              duration: "00:47:53",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/1dgFAsajUpUT7DLXgAxHb9GyXHH.jpg",
+              bitrate: 0,
+              rating: 8.374,
+              season: "01",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/1dgFAsajUpUT7DLXgAxHb9GyXHH.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505754",
+            season: 1,
+            direct_source: ""
+          }
+        ],
+        "2": [
+          {
+            id: "881482",
+            episode_num: "1",
+            title: "Breaking Bad: A Química do Mal [L] (2008) S02 E01",
+            container_extension: "mp4",
+            info: {
+              releasedate: "",
+              plot: "Enquanto planejam sua última grande venda, Walt e Jesse temem que Tuco esteja pensando em matá-los assim que a entrega for feita.",
+              duration_secs: 2845,
+              duration: "00:47:25",
+              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/7vVujNqjP23MtPqUTBNITIW3DDA.jpg",
+              bitrate: 0,
+              rating: 8.326,
+              season: "02",
+              tmdb_id: "",
+              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/7vVujNqjP23MtPqUTBNITIW3DDA.jpg"
+            },
+            subtitles: [],
+            custom_sid: "",
+            added: "1736505755",
+            season: 2,
+            direct_source: ""
+          }
+        ]
+      }
+    };
+    
+    setSelectedSeries(breakingBadData);
+    setShowSeriesInfo(true);
   };
+
+  const handleSeriesInfoBackPress = () => {
+    setShowSeriesInfo(false);
+    setSelectedSeries(null);
+  };
+
+  if (showSeriesInfo && selectedSeries) {
+    return <SeriesInfoPage onBackPress={handleSeriesInfoBackPress} seriesData={selectedSeries} />;
+  }
 
   return (
     <View style={styles.container}>

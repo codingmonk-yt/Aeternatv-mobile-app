@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import LiveTvInfoPage from "./live-tv-info";
 
 const { width } = Dimensions.get("window");
 const cardWidth = (width - 60) / 3; // 3 columns with margins
@@ -68,6 +69,8 @@ export default function LiveTvDetailsPage({
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState("Live");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showLiveTvInfo, setShowLiveTvInfo] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<any>(null);
 
   const categories = [
     "Live",
@@ -90,102 +93,378 @@ export default function LiveTvDetailsPage({
       title: "CNN",
       platform: "Live TV",
       imageUrl: "https://download.logo.wine/logo/CNN/CNN-Logo.wine.png",
+      category: "News",
+      description: "CNN is a multinational news-based pay television channel headquartered in Atlanta, Georgia. CNN is widely credited with introducing the concept of 24-hour news coverage.",
+      currentShow: {
+        title: "CNN Newsroom",
+        time: "2:00 PM - 4:00 PM",
+        description: "Breaking news and live updates from around the world.",
+        genre: "News",
+      },
+      upcomingShows: [
+        {
+          title: "Anderson Cooper 360°",
+          time: "4:00 PM - 5:00 PM",
+          description: "In-depth analysis and interviews with Anderson Cooper.",
+          genre: "News",
+        },
+        {
+          title: "The Lead with Jake Tapper",
+          time: "5:00 PM - 6:00 PM",
+          description: "Political news and analysis with Jake Tapper.",
+          genre: "News",
+        },
+        {
+          title: "Situation Room",
+          time: "6:00 PM - 7:00 PM",
+          description: "Breaking news and political coverage.",
+          genre: "News",
+        },
+      ],
+      isLive: true,
+      viewers: "2.4M",
     },
     {
       id: 2,
       title: "ESPN",
       platform: "Live TV",
-      imageUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/6/60/ESPN_logos.png",
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/6/60/ESPN_logos.png",
+      category: "Sports",
+      description: "ESPN is an American multinational basic cable sports channel owned by ESPN Inc., owned jointly by The Walt Disney Company and Hearst Communications.",
+      currentShow: {
+        title: "SportsCenter",
+        time: "2:00 PM - 3:00 PM",
+        description: "The latest sports news, highlights, and analysis.",
+        genre: "Sports",
+      },
+      upcomingShows: [
+        {
+          title: "NBA Today",
+          time: "3:00 PM - 4:00 PM",
+          description: "NBA news, highlights, and analysis.",
+          genre: "Sports",
+        },
+        {
+          title: "NFL Live",
+          time: "4:00 PM - 5:00 PM",
+          description: "NFL news and analysis.",
+          genre: "Sports",
+        },
+      ],
+      isLive: true,
+      viewers: "1.8M",
     },
     {
       id: 3,
       title: "BBC News",
       platform: "Live TV",
       imageUrl: "https://download.logo.wine/logo/BBC/BBC-Logo.wine.png",
+      category: "News",
+      description: "BBC News is the news and current affairs division of the British Broadcasting Corporation.",
+      currentShow: {
+        title: "BBC World News",
+        time: "2:00 PM - 3:00 PM",
+        description: "International news and current affairs.",
+        genre: "News",
+      },
+      upcomingShows: [
+        {
+          title: "BBC News at Six",
+          time: "6:00 PM - 6:30 PM",
+          description: "Evening news bulletin.",
+          genre: "News",
+        },
+      ],
+      isLive: true,
+      viewers: "1.2M",
     },
     {
       id: 4,
       title: "Discovery",
       platform: "Live TV",
-      imageUrl:
-        "https://logos-world.net/wp-content/uploads/2022/01/Discovery-Channel-Logo.png",
+      imageUrl: "https://logos-world.net/wp-content/uploads/2022/01/Discovery-Channel-Logo.png",
+      category: "Documentary",
+      description: "Discovery Channel is an American pay television channel owned by Warner Bros. Discovery.",
+      currentShow: {
+        title: "MythBusters",
+        time: "2:00 PM - 3:00 PM",
+        description: "Testing urban legends and myths with science.",
+        genre: "Documentary",
+      },
+      upcomingShows: [
+        {
+          title: "Deadliest Catch",
+          time: "3:00 PM - 4:00 PM",
+          description: "Follow crab fishermen in the Bering Sea.",
+          genre: "Documentary",
+        },
+      ],
+      isLive: true,
+      viewers: "890K",
     },
     {
       id: 5,
       title: "MTV",
       platform: "Live TV",
-      imageUrl:
-        "https://cdn.freebiesupply.com/images/large/2x/mtv-logo-png-transparent.png",
+      imageUrl: "https://cdn.freebiesupply.com/images/large/2x/mtv-logo-png-transparent.png",
+      category: "Entertainment",
+      description: "MTV is an American cable channel that was originally established to play music videos.",
+      currentShow: {
+        title: "Ridiculousness",
+        time: "2:00 PM - 3:00 PM",
+        description: "Funny viral videos with celebrity commentary.",
+        genre: "Entertainment",
+      },
+      upcomingShows: [
+        {
+          title: "Catfish: The TV Show",
+          time: "3:00 PM - 4:00 PM",
+          description: "Help people uncover online dating deceptions.",
+          genre: "Entertainment",
+        },
+      ],
+      isLive: true,
+      viewers: "650K",
     },
     {
       id: 6,
       title: "National Geographic",
       platform: "Live TV",
-      imageUrl:
-        "https://logos-world.net/wp-content/uploads/2020/09/National-Geographic-Logo.png",
+      imageUrl: "https://logos-world.net/wp-content/uploads/2020/09/National-Geographic-Logo.png",
+      category: "Documentary",
+      description: "National Geographic Channel is an American pay television network and flagship channel owned by National Geographic Partners.",
+      currentShow: {
+        title: "Planet Earth",
+        time: "2:00 PM - 3:00 PM",
+        description: "Explore the natural world in stunning detail.",
+        genre: "Documentary",
+      },
+      upcomingShows: [
+        {
+          title: "Blue Planet",
+          time: "3:00 PM - 4:00 PM",
+          description: "Discover the mysteries of the ocean depths.",
+          genre: "Documentary",
+        },
+      ],
+      isLive: true,
+      viewers: "1.1M",
     },
     {
       id: 7,
       title: "HBO",
       platform: "Live TV",
-      imageUrl:
-        "https://logos-world.net/wp-content/uploads/2020/09/HBO-Emblem.png",
+      imageUrl: "https://logos-world.net/wp-content/uploads/2020/09/HBO-Emblem.png",
+      category: "Entertainment",
+      description: "HBO is an American premium cable and satellite television network.",
+      currentShow: {
+        title: "Game of Thrones Marathon",
+        time: "2:00 PM - 6:00 PM",
+        description: "Epic fantasy series marathon.",
+        genre: "Entertainment",
+      },
+      upcomingShows: [
+        {
+          title: "Westworld",
+          time: "6:00 PM - 7:00 PM",
+          description: "Sci-fi series about artificial consciousness.",
+          genre: "Entertainment",
+        },
+      ],
+      isLive: true,
+      viewers: "2.1M",
     },
     {
       id: 8,
       title: "Fox News",
       platform: "Live TV",
-      imageUrl:
-        "https://www.hatchwise.com/wp-content/uploads/2023/08/Fox-News-Channel-Emblem-1024x576.png",
+      imageUrl: "https://www.hatchwise.com/wp-content/uploads/2023/08/Fox-News-Channel-Emblem-1024x576.png",
+      category: "News",
+      description: "Fox News is an American multinational conservative cable news television channel.",
+      currentShow: {
+        title: "Fox News Live",
+        time: "2:00 PM - 3:00 PM",
+        description: "Breaking news and political coverage.",
+        genre: "News",
+      },
+      upcomingShows: [
+        {
+          title: "The Five",
+          time: "5:00 PM - 6:00 PM",
+          description: "Political talk show with five hosts.",
+          genre: "News",
+        },
+      ],
+      isLive: true,
+      viewers: "1.9M",
     },
     {
       id: 9,
       title: "Cartoon Network",
       platform: "Live TV",
-      imageUrl:
-        "https://yt3.googleusercontent.com/1Cqc3xwwMDAp_tZlbXRL4u8bKLzprzS-oGluxBS_hH-BUCVBAi9f-XsVceF2bWrf15UYIf_-rg=s900-c-k-c0x00ffffff-no-rj",
+      imageUrl: "https://yt3.googleusercontent.com/1Cqc3xwwMDAp_tZlbXRL4u8bKLzprzS-oGluxBS_hH-BUCVBAi9f-XsVceF2bWrf15UYIf_-rg=s900-c-k-c0x00ffffff-no-rj",
+      category: "Kids",
+      description: "Cartoon Network is an American cable television channel owned by Warner Bros. Discovery.",
+      currentShow: {
+        title: "Adventure Time",
+        time: "2:00 PM - 3:00 PM",
+        description: "Adventures of Finn and Jake in the Land of Ooo.",
+        genre: "Animation",
+      },
+      upcomingShows: [
+        {
+          title: "Regular Show",
+          time: "3:00 PM - 4:00 PM",
+          description: "Mordecai and Rigby's workplace adventures.",
+          genre: "Animation",
+        },
+      ],
+      isLive: true,
+      viewers: "450K",
     },
     {
       id: 10,
       title: "Comedy Central",
       platform: "Live TV",
-      imageUrl:
-        "https://1000logos.net/wp-content/uploads/2021/05/Comedy-Central-logo.png",
+      imageUrl: "https://1000logos.net/wp-content/uploads/2021/05/Comedy-Central-logo.png",
+      category: "Entertainment",
+      description: "Comedy Central is an American basic cable television channel owned by Paramount Global.",
+      currentShow: {
+        title: "The Daily Show",
+        time: "2:00 PM - 3:00 PM",
+        description: "Late-night comedy and news satire.",
+        genre: "Comedy",
+      },
+      upcomingShows: [
+        {
+          title: "South Park",
+          time: "3:00 PM - 4:00 PM",
+          description: "Animated comedy series about four boys.",
+          genre: "Comedy",
+        },
+      ],
+      isLive: true,
+      viewers: "720K",
     },
     {
       id: 11,
       title: "History Channel",
       platform: "Live TV",
-      imageUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/History_%282021%29.svg/250px-History_%282021%29.svg.png",
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/History_%282021%29.svg/250px-History_%282021%29.svg.png",
+      category: "Documentary",
+      description: "History is an American pay television network and flagship channel owned by A&E Networks.",
+      currentShow: {
+        title: "Ancient Aliens",
+        time: "2:00 PM - 3:00 PM",
+        description: "Explore theories about extraterrestrial influence on human history.",
+        genre: "Documentary",
+      },
+      upcomingShows: [
+        {
+          title: "The Curse of Oak Island",
+          time: "3:00 PM - 4:00 PM",
+          description: "Treasure hunting on Oak Island.",
+          genre: "Documentary",
+        },
+      ],
+      isLive: true,
+      viewers: "580K",
     },
     {
       id: 12,
       title: "Food Network",
       platform: "Live TV",
-      imageUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Food_Network_logo.svg/1200px-Food_Network_logo.svg.png",
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Food_Network_logo.svg/1200px-Food_Network_logo.svg.png",
+      category: "Lifestyle",
+      description: "Food Network is an American basic cable channel owned by Warner Bros. Discovery.",
+      currentShow: {
+        title: "Chopped",
+        time: "2:00 PM - 3:00 PM",
+        description: "Chefs compete with mystery ingredients.",
+        genre: "Cooking",
+      },
+      upcomingShows: [
+        {
+          title: "Guy's Grocery Games",
+          time: "3:00 PM - 4:00 PM",
+          description: "Cooking competition in a grocery store.",
+          genre: "Cooking",
+        },
+      ],
+      isLive: true,
+      viewers: "340K",
     },
     {
       id: 13,
       title: "TLC",
       platform: "Live TV",
       imageUrl: "https://cdn.freebiesupply.com/logos/thumbs/2x/tlc-10-logo.png",
+      category: "Lifestyle",
+      description: "TLC is an American pay television channel owned by Warner Bros. Discovery.",
+      currentShow: {
+        title: "90 Day Fiancé",
+        time: "2:00 PM - 3:00 PM",
+        description: "Couples navigate the K-1 visa process.",
+        genre: "Reality",
+      },
+      upcomingShows: [
+        {
+          title: "Say Yes to the Dress",
+          time: "3:00 PM - 4:00 PM",
+          description: "Brides find their perfect wedding dress.",
+          genre: "Reality",
+        },
+      ],
+      isLive: true,
+      viewers: "420K",
     },
     {
       id: 14,
       title: "Animal Planet",
       platform: "Live TV",
-      imageUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/2018_Animal_Planet_logo.svg/2560px-2018_Animal_Planet_logo.svg.png",
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/2018_Animal_Planet_logo.svg/2560px-2018_Animal_Planet_logo.svg.png",
+      category: "Documentary",
+      description: "Animal Planet is an American multinational pay television channel owned by Warner Bros. Discovery.",
+      currentShow: {
+        title: "The Zoo",
+        time: "2:00 PM - 3:00 PM",
+        description: "Behind-the-scenes look at zoo operations.",
+        genre: "Documentary",
+      },
+      upcomingShows: [
+        {
+          title: "River Monsters",
+          time: "3:00 PM - 4:00 PM",
+          description: "Extreme angler investigates aquatic mysteries.",
+          genre: "Documentary",
+        },
+      ],
+      isLive: true,
+      viewers: "380K",
     },
     {
       id: 15,
       title: "FX",
       platform: "Live TV",
-      imageUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/4/4d/FX_International_logo.svg",
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4d/FX_International_logo.svg",
+      category: "Entertainment",
+      description: "FX is an American pay television channel owned by FX Networks, LLC.",
+      currentShow: {
+        title: "American Horror Story Marathon",
+        time: "2:00 PM - 5:00 PM",
+        description: "Horror anthology series marathon.",
+        genre: "Horror",
+      },
+      upcomingShows: [
+        {
+          title: "The Walking Dead",
+          time: "5:00 PM - 6:00 PM",
+          description: "Post-apocalyptic survival drama.",
+          genre: "Drama",
+        },
+      ],
+      isLive: true,
+      viewers: "1.3M",
     },
   ];
 
@@ -199,8 +478,18 @@ export default function LiveTvDetailsPage({
 
   const handleLiveTvPress = (channel: any) => {
     console.log("Live TV pressed:", channel.title);
-    // TODO: Navigate to live TV player
+    setSelectedChannel(channel);
+    setShowLiveTvInfo(true);
   };
+
+  const handleLiveTvInfoBackPress = () => {
+    setShowLiveTvInfo(false);
+    setSelectedChannel(null);
+  };
+
+  if (showLiveTvInfo && selectedChannel) {
+    return <LiveTvInfoPage onBackPress={handleLiveTvInfoBackPress} channelData={selectedChannel} />;
+  }
 
   return (
     <View style={styles.container}>

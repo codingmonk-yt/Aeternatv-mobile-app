@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bookmark, Home, Play, Search } from 'lucide-react-native';
+import { Home, Play, Search } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ export default function BottomNavigation({ activeTab, onTabPress }: BottomNaviga
     { id: 'home', Icon: Home },
     { id: 'movies', Icon: Play },
     { id: 'search', Icon: Search },
-    { id: 'wishlist', Icon: Bookmark },
+    // { id: 'wishlist', Icon: Bookmark },
   ];
 
   return (

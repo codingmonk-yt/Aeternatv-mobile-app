@@ -85,7 +85,7 @@ export default function MoviesPage() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#000000', '#110546', '#0B033A', '#110546', '#000000']}
+        colors={["rgba(0, 0, 0, 1)", "rgb(26, 15, 67)", "rgb(37, 28, 87)", "rgb(22, 8, 75)", "#000000"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         locations={[0, 0.4, 0.6, 0.7, 1]}

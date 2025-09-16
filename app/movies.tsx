@@ -1,8 +1,13 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { ChevronRight, Film, Play, Radio, Tv } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ErrorScreenWrapper } from '../src/components/common/ErrorScreens';
+import { withErrorHandling } from '../src/components/common/withErrorHandling';
+import { Fonts } from '../src/utils/fonts';
+import { getResponsiveIconSize, getResponsivePadding, getResponsiveSpacing, responsiveStyles } from '../src/utils/responsive';
 import LiveTvDetailsPage from './live-tv-details';
 import MoviesDetailsPage from './movies-details';
 import SeriesDetailsPage from './series-details';
@@ -12,41 +17,49 @@ const { width, height } = Dimensions.get('window');
 interface CategoryCardProps {
   title: string;
   subtitle: string;
-  icon: string;
+  icon: React.ReactNode;
+  gradient: readonly [string, string, ...string[]];
   onPress: () => void;
 }
 
-function CategoryCard({ title, subtitle, icon, onPress }: CategoryCardProps) {
+function CategoryCard({ title, subtitle, icon, gradient, onPress }: CategoryCardProps) {
   return (
     <TouchableOpacity 
       style={styles.cardContainer} 
       onPress={onPress} 
-      activeOpacity={0.8}
+      activeOpacity={0.9}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <BlurView intensity={20} tint="dark" style={styles.card}>
-        <TouchableOpacity 
-          style={styles.cardContent}
-          onPress={onPress}
-          activeOpacity={1}
-        >
-          <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{icon}</Text>
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <BlurView intensity={15} tint="dark" style={styles.cardBlur}>
+          <View style={styles.cardContent}>
+            {/* <View style={styles.iconContainer}>
+              {icon}
+            </View> */}
+            <View style={styles.textContainer}>
+              <Text style={styles.cardTitle}>{title}</Text>
+              <Text style={styles.cardSubtitle}>{subtitle}</Text>
+            </View>
+            <View style={styles.arrowContainer}>
+              <ChevronRight size={getResponsiveIconSize(28)} color="#ffffff" />
+            </View>
           </View>
-          <View style={styles.textContainer}>
-            <Text style={styles.cardTitle}>{title}</Text>
-            {/* <Text style={styles.cardSubtitle}>{subtitle}</Text> */}
-          </View>
-          <View style={styles.arrowContainer}>
-            <Text style={styles.arrow}>›</Text>
-          </View>
-        </TouchableOpacity>
-      </BlurView>
+        </BlurView>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
-export default function MoviesPage() {
+interface MoviesPageProps {
+  onVideoPlayerOpen?: (title?: string) => void;
+}
+
+function MoviesPage({ onVideoPlayerOpen }: MoviesPageProps) {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState('main');
 
@@ -71,56 +84,97 @@ export default function MoviesPage() {
   };
 
   if (currentPage === 'movies') {
-    return <MoviesDetailsPage onBackPress={handleBackPress} />;
+    return <MoviesDetailsPage onBackPress={handleBackPress} onVideoPlayerOpen={onVideoPlayerOpen} />;
   }
 
   if (currentPage === 'series') {
-    return <SeriesDetailsPage onBackPress={handleBackPress} />;
+    return <SeriesDetailsPage onBackPress={handleBackPress} onVideoPlayerOpen={onVideoPlayerOpen} />;
   }
 
   if (currentPage === 'live-tv') {
-    return <LiveTvDetailsPage onBackPress={handleBackPress} />;
+    return <LiveTvDetailsPage onBackPress={handleBackPress} onVideoPlayerOpen={onVideoPlayerOpen} />;
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={["rgba(0, 0, 0, 1)", "rgb(26, 15, 67)", "rgb(37, 28, 87)", "rgb(22, 8, 75)", "#000000"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        locations={[0, 0.4, 0.6, 0.7, 1]}
-        style={styles.gradientBackground}
-      >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Browse Content</Text>
-          </View>
-          
-          <View style={styles.cardsContainer}>
-            <CategoryCard
-              title="Movies"
-              subtitle="Latest blockbusters and classics"
-              icon="🎬"
-              onPress={() => handleCategoryPress('Movies')}
-            />
-            
-            <CategoryCard
-              title="Series"
-              subtitle="Binge-worthy shows and series"
-              icon="📺"
-              onPress={() => handleCategoryPress('Series')}
-            />
-            
-            <CategoryCard
-              title="Live TV"
-              subtitle="Live channels and events"
-              icon="📡"
-              onPress={() => handleCategoryPress('LiveTV')}
-            />
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
+    <ErrorScreenWrapper
+      error={false}
+      isLoading={false}
+      onRetry={() => {}}
+      serverErrorMessage="Failed to load content. Please check your connection and try again."
+      offlineMessage="You're offline. Please check your internet connection to view content."
+    >
+      <View style={styles.container}>
+        <LinearGradient
+          colors={["#0a0a0a", "#1a0a0a", "#2a0a0a", "#1a0a0a", "#0a0a0a"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBackground}
+        >
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>Discover Entertainment</Text>
+                <Text style={styles.headerSubtitle}>Choose your preferred content type</Text>
+              </View>
+              
+              <View style={styles.cardsContainer}>
+                <CategoryCard
+                  title="Movies"
+                  subtitle="Latest blockbusters and timeless classics"
+                  icon={<Film size={getResponsiveIconSize(28)} color="#ffffff" />}
+                  gradient={["#ff6b6b", "#ee5a52", "#ff4757"] as const}
+                  onPress={() => handleCategoryPress('Movies')}
+                />
+                
+                <CategoryCard
+                  title="Series"
+                  subtitle="Binge-worthy shows and epic series"
+                  icon={<Tv size={getResponsiveIconSize(28)} color="#ffffff" />}
+                  gradient={["#4ecdc4", "#44a08d", "#2c3e50"] as const}
+                  onPress={() => handleCategoryPress('Series')}
+                />
+                
+                <CategoryCard
+                  title="Live TV"
+                  subtitle="Live channels and real-time events"
+                  icon={<Radio size={getResponsiveIconSize(28)} color="#ffffff" />}
+                  gradient={["#a8edea", "#fed6e3", "#d299c2"] as const}
+                  onPress={() => handleCategoryPress('LiveTV')}
+                />
+              </View>
+
+              <View style={styles.featuresContainer}>
+                <Text style={styles.featuresTitle}>Why Choose AeternaTV?</Text>
+                <View style={styles.featuresGrid}>
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIcon}>
+                      <Play size={getResponsiveIconSize(20)} color="#ff6b6b" />
+                    </View>
+                    <Text style={styles.featureText}>High Quality</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIcon}>
+                      <Tv size={getResponsiveIconSize(20)} color="#4ecdc4" />
+                    </View>
+                    <Text style={styles.featureText}>Live Streaming</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIcon}>
+                      <Film size={getResponsiveIconSize(20)} color="#a8edea" />
+                    </View>
+                    <Text style={styles.featureText}>Vast Library</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      </View>
+    </ErrorScreenWrapper>
   );
 }
 
@@ -131,90 +185,158 @@ const styles = StyleSheet.create({
   gradientBackground: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: getResponsiveSpacing(40),
+  },
   content: {
     flex: 1,
-    paddingTop: 40,
-    paddingHorizontal: 20,
+    paddingTop: getResponsiveSpacing(60),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsiveSpacing(40),
   },
   header: {
-    marginBottom: 32,
-    alignItems: 'flex-start',
+    marginBottom: getResponsiveSpacing(40),
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 36,
-    fontWeight: '800',
+    fontSize: responsiveStyles.title.fontSize * 1.5,
+    fontFamily: Fonts.black,
     color: '#FFFFFF',
-    textAlign: 'left',
+    textAlign: 'center',
     letterSpacing: -1,
+    marginBottom: getResponsiveSpacing(8),
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  headerSubtitle: {
+    fontSize: responsiveStyles.body.fontSize,
+    fontFamily: Fonts.regular,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
   },
   cardsContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    gap: 24,
-    paddingTop: 20,
+    marginBottom: getResponsiveSpacing(50),
+    gap: getResponsiveSpacing(20),
   },
   cardContainer: {
     marginHorizontal: 0,
   },
-  card: {
-    borderRadius: 16,
+  cardGradient: {
+    borderRadius: getResponsiveSpacing(20),
     overflow: 'hidden',
-    borderWidth: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 12,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  cardBlur: {
+    borderRadius: getResponsiveSpacing(20),
+    overflow: 'hidden',
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 40,
-    minHeight: 140,
+    padding: getResponsivePadding(24),
+    minHeight: 120,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    width: getResponsiveIconSize(70),
+    height: getResponsiveIconSize(70),
+    borderRadius: getResponsiveSpacing(20),
+    // backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 28,
-  },
-  icon: {
-    fontSize: 36,
+    marginRight: getResponsiveSpacing(20),
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   textContainer: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: responsiveStyles.title.fontSize,
+    fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(6),
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   cardSubtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.75)',
-    lineHeight: 24,
+    fontSize: responsiveStyles.caption.fontSize,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 20,
     fontWeight: '400',
   },
   arrowContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    // width: getResponsiveIconSize(45),
+    // height: getResponsiveIconSize(45),
+    // borderRadius: getResponsiveIconSize(22.5),
+    // // backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // shadowColor: '#000000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 2,
+    // },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 4,
+    // elevation: 2,
+  },
+  featuresContainer: {
+    marginTop: getResponsiveSpacing(20),
+    paddingBottom: getResponsiveSpacing(100), // Added padding to prevent overlap with bottom nav
+  },
+  featuresTitle: {
+    fontSize: responsiveStyles.subtitle.fontSize,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing(24),
+    letterSpacing: -0.3,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: getResponsivePadding(10),
+  },
+  featureItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  featureIcon: {
+    width: getResponsiveIconSize(50),
+    height: getResponsiveIconSize(50),
+    borderRadius: getResponsiveIconSize(25),
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: getResponsiveSpacing(8),
   },
-  arrow: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: '300',
+  featureText: {
+    fontSize: responsiveStyles.small.fontSize,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
+
+// Export with error handling
+export default withErrorHandling(MoviesPage);

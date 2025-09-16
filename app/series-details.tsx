@@ -1,35 +1,120 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Search } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { ServerErrorScreen } from '../src/components/common/ErrorScreens';
+import KeyboardDismissWrapper from '../src/components/common/KeyboardDismissWrapper';
+import { useDebounce } from '../src/hooks/useDebounce';
+import { useSeries } from '../src/hooks/useSeries';
+import { useSeriesCategories } from '../src/hooks/useSeriesCategories';
+import { getResponsiveIconSize, getResponsivePadding, getResponsiveSpacing, responsiveStyles } from '../src/utils/responsive';
 import SeriesInfoPage from './series-info';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 60) / 3; // 3 columns with margins
+
+// Import not-found illustration
+const notFoundImage = require('../assets/illustrations/not-found.png');
+
+// Calculate responsive card width based on available space and screen size
+const getCardWidth = () => {
+  const screenSize = width;
+  const horizontalPadding = getResponsivePadding(20) * 2; // Left and right padding
+  const gap = getResponsiveSpacing(10) * 2; // Gap between 3 cards
+  const availableWidth = screenSize - horizontalPadding - gap;
+  
+  // Calculate base width for 3 columns
+  let calculatedWidth = availableWidth / 3;
+  
+  // Adjust for different screen sizes
+  if (screenSize <= 375) {
+    // Small screens: ensure cards aren't too small
+    calculatedWidth = Math.max(calculatedWidth, 90);
+  } else if (screenSize <= 414) {
+    // Medium screens: standard sizing
+    calculatedWidth = Math.max(calculatedWidth, 100);
+  } else if (screenSize <= 768) {
+    // Large screens: can be larger
+    calculatedWidth = Math.max(calculatedWidth, 110);
+  } else {
+    // XLarge screens: maximum size
+    calculatedWidth = Math.max(calculatedWidth, 120);
+  }
+  
+  return calculatedWidth;
+};
+
+// Calculate responsive header height to prevent overlap
+const getHeaderHeight = () => {
+  const screenSize = width;
+  // Base header height calculation
+  const headerPadding = getResponsiveSpacing(20) * 2; // Top and bottom padding
+  const searchHeight = getResponsiveSpacing(50); // Search bar height
+  const categoriesHeight = getResponsiveSpacing(50); // Categories height
+  const baseHeight = headerPadding + searchHeight + categoriesHeight;
+  
+  // Add extra margin for smaller screens to prevent overlap
+  if (screenSize <= 375) {
+    return baseHeight + getResponsiveSpacing(40); // Extra margin for small screens
+  } else if (screenSize <= 414) {
+    return baseHeight + getResponsiveSpacing(30); // Extra margin for medium screens
+  } else {
+    return baseHeight + getResponsiveSpacing(20); // Standard margin for larger screens
+  }
+};
+
+const cardWidth = getCardWidth();
+const headerHeight = getHeaderHeight();
 
 interface SeriesCardProps {
-  title: string;
-  platform: string;
-  imageUrl: string;
+  series: any;
   onPress: () => void;
 }
 
-function SeriesCard({ title, platform, imageUrl, onPress }: SeriesCardProps) {
+function SeriesCard({ series, onPress }: SeriesCardProps) {
+  const [imageError, setImageError] = useState(false);
+  
+  // Get the best available image URL
+  const imageUrl = series.cover || series.backdrop_path?.[0];
+  
+  // Check if image URL is valid (not empty or just whitespace)
+  const hasValidImage = imageUrl && imageUrl.trim() !== '';
+  
+  // Reset image error when series changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [series._id]);
+  
   return (
     <TouchableOpacity style={styles.seriesCard} onPress={onPress} activeOpacity={0.8}>
-      <Image source={{ uri: imageUrl }} style={styles.seriesImage} />
+      {hasValidImage && !imageError ? (
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.seriesImage}
+          onError={() => {
+            setImageError(true);
+            console.log('Image failed to load for series:', series.title);
+          }}
+        />
+      ) : (
+        <View style={styles.placeholderContainer}>
+          <Text style={styles.placeholderIcon}>📺</Text>
+          <Text style={styles.placeholderText}>No Image</Text>
+        </View>
+      )}
       <View style={styles.seriesOverlay}>
-        <Text style={styles.seriesTitle}>{title}</Text>
-        <Text style={styles.seriesPlatform}>{platform}</Text>
+        <Text style={styles.seriesTitle} numberOfLines={2}>{series.title}</Text>
+        <Text style={styles.seriesPlatform}>{series.year}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -39,6 +124,34 @@ interface CategoryChipProps {
   title: string;
   isActive: boolean;
   onPress: () => void;
+}
+
+interface EmptySeriesStateProps {
+  searchQuery: string;
+  selectedCategory: string;
+}
+
+function EmptySeriesState({ searchQuery, selectedCategory }: EmptySeriesStateProps) {
+  return (
+    <View style={styles.emptyStateContainer}>
+      <Image 
+        source={notFoundImage} 
+        style={styles.emptyStateImage}
+        resizeMode="contain"
+      />
+      <Text style={styles.emptyStateTitle}>
+        No series found
+      </Text>
+      <Text style={styles.emptyStateMessage}>
+        {searchQuery 
+          ? `No series found for "${searchQuery}"` 
+          : selectedCategory !== 'All' 
+            ? `No series found in ${selectedCategory} category`
+            : 'No series available'
+        }
+      </Text>
+    </View>
+  );
 }
 
 function CategoryChip({ title, isActive, onPress }: CategoryChipProps) {
@@ -57,145 +170,57 @@ function CategoryChip({ title, isActive, onPress }: CategoryChipProps) {
 
 interface SeriesDetailsPageProps {
   onBackPress?: () => void;
+  onVideoPlayerOpen?: (title?: string, videoUrl?: string) => void;
 }
 
-export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProps) {
+export default function SeriesDetailsPage({ onBackPress, onVideoPlayerOpen }: SeriesDetailsPageProps) {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState('New');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSeriesInfo, setShowSeriesInfo] = useState(false);
-  const [selectedSeries, setSelectedSeries] = useState<any>(null);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
 
-  const categories = ['New', 'Sci-Fi', 'Comedy', 'Romance', 'Thriller', 'Action', 'Adventure', 'Animation', 'Biography', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Sport', 'War', 'Western'];
-
-  const series = [
-    {
-      id: 1,
-      title: 'Stranger Things',
-      platform: 'Netflix',
-      imageUrl: 'https://resizing.flixster.com/cs-44B-LN4TMp-5wnSXitM99U7M=/ems.cHJkLWVtcy1hc3NldHMvdHZzZWFzb24vYTM4ZDFlYzctZmUxMS00ZGY1LTg1NGItMGNmNGNjOGNkZDJhLmpwZw=='
-    },
-    {
-      id: 2,
-      title: 'The Crown',
-      platform: 'Netflix',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BODcyODZlZDMtZGE0Ni00NjBhLWJlYTAtZDdlNWY3MzkwMGVhXkEyXkFqcGc@._V1_.jpg'
-    },
-    {
-      id: 3,
-      title: 'House of the Dragon',
-      platform: 'HBO Max',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg'
-    },
-    {
-      id: 4,
-      title: 'The Mandalorian',
-      platform: 'Disney+',
-      imageUrl: 'https://m.media-amazon.com/images/I/91904DC-yXL._UF1000,1000_QL80_.jpg'
-    },
-    {
-      id: 5,
-      title: 'Euphoria',
-      platform: 'HBO Max',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BZjVlN2M2N2MtOWViZC00MzIxLTlhZWEtMTIwNDIwMzE3ZWJiXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      id: 6,
-      title: 'Wednesday',
-      platform: 'Netflix',
-      imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg2zQFi39dG64omzMOcEpSaPotn8YO3NlmUw&s'
-    },
-    {
-      id: 7,
-      title: 'The Boys',
-      platform: 'Prime Video',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BMWJlN2U5MzItNjU4My00NTM2LWFjOWUtOWFiNjg3ZTMxZDY1XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      id: 8,
-      title: 'Bridgerton',
-      platform: 'Netflix',
-      imageUrl: 'https://resizing.flixster.com/Zdvk-xZ3cN7uIJGvqPcuAijAb1U=/ems.cHJkLWVtcy1hc3NldHMvdHZzZXJpZXMvOWQyNzdiMGEtZmZhYi00YmZjLTkxZDktNDFlMjFhNjZkZmYwLmpwZw=='
-    },
-    {
-      id: 9,
-      title: 'The Witcher',
-      platform: 'Netflix',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BMTQ5MDU5MTktMDZkMy00NDU1LWIxM2UtODg5OGFiNmRhNDBjXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      id: 10,
-      title: 'Loki',
-      platform: 'Disney+',
-      imageUrl: 'https://m.media-amazon.com/images/I/81xETRmcFwL._UF1000,1000_QL80_.jpg'
-    },
-    {
-      id: 11,
-      title: 'Ozark',
-      platform: 'Netflix',
-      imageUrl: 'https://resizing.flixster.com/3ko6zO6791p1QPOXHUI2eCwmHXQ=/ems.cHJkLWVtcy1hc3NldHMvdHZzZXJpZXMvMDIyOTBmN2QtMzM0Yi00ODUxLWE0MWYtMmViYWJiOGViZjRkLmpwZw=='
-    },
-    {
-      id: 12,
-      title: 'The Last of Us',
-      platform: 'HBO Max',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BYWI3ODJlMzktY2U5NC00ZjdlLWE1MGItNWQxZDk3NWNjN2RhXkEyXkFqcGc@._V1_.jpg',
-      seasons: [
-        {
-          seasonNumber: 1,
-          seasonName: "Season 1",
-          episodes: [
-            {
-              id: 1,
-              title: "When You're Lost in the Darkness",
-              episodeNumber: "E01",
-              duration: "81 m",
-              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
-            },
-            {
-              id: 2,
-              title: "Infected",
-              episodeNumber: "E02",
-              duration: "50 m",
-              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
-            },
-            {
-              id: 3,
-              title: "Long, Long Time",
-              episodeNumber: "E03",
-              duration: "75 m",
-              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
-            },
-            {
-              id: 4,
-              title: "Please Hold to My Hand",
-              episodeNumber: "E04",
-              duration: "45 m",
-              thumbnailUrl: "https://m.media-amazon.com/images/M/MV5BZjBiOGIyY2YtOTA3OC00YzY1LThkYjktMGRkYTNhNTExY2I2XkEyXkFqcGdeQXVyMTEyMjM2NDc2._V1_.jpg",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: 13,
-      title: 'Squid Game',
-      platform: 'Netflix',
-      imageUrl: 'https://upload.wikimedia.org/wikipedia/en/3/38/Squid_Game_season_2_poster.png'
-    },
-    {
-      id: 14,
-      title: 'The Bear',
-      platform: 'Hulu',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BYWZhNDZiMzAtZmZlYS00MWFmLWE2MWEtNDAxZTZiN2U4Y2U2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      id: 15,
-      title: 'Yellowstone',
-      platform: 'Paramount+',
-      imageUrl: 'https://resizing.flixster.com/cS0gOaiC8j_lzBVbLZqtCz0S9uo=/fit-in/705x460/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p16780458_b_v13_ab.jpg'
-    }
+  // Fetch Series categories from API
+  const { categories, isLoading: categoriesLoading, error: categoriesError } = useSeriesCategories();
+  
+  // Add "All" option to categories
+  const allCategories = [
+    { _id: 'all', category_name: 'All', category_id: 'all' },
+    ...categories
   ];
+  
+  // Function to get category ID for API calls (returns null for "All")
+  const getCategoryIdForAPI = () => {
+    if (selectedCategory === 'All') {
+      return null;
+    }
+    const category = categories.find(cat => cat.category_name === selectedCategory);
+    if (category && category.category_id) {
+      // Remove leading zeros from category_id
+      return category.category_id.replace(/^0+/, '') || '0';
+    }
+    return null;
+  };
+
+  // Debounced search
+  const debouncedSearch = useDebounce(searchQuery, 1000);
+  
+  // Fetch series with infinite scrolling
+  const {
+    series,
+    pagination,
+    isLoading: seriesLoading,
+    isFetching: seriesFetching,
+    error: seriesError,
+    hasNextPage,
+    loadMore,
+    refetch: refetchSeries,
+    isEndReached,
+  } = useSeries({
+    search: debouncedSearch,
+    categoryId: getCategoryIdForAPI(),
+    limit: 20,
+  });
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -207,292 +232,29 @@ export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProp
 
   const handleSeriesPress = (series: any) => {
     console.log('Series pressed:', series.title);
-    
-    // Hardcoded Breaking Bad data for now - will be replaced with API calls later
-    const breakingBadData = {
-      seasons: [
-        {
-          air_date: "2025-08-14",
-          episode_count: "7",
-          name: "Temporada 1",
-          overview: "",
-          season_number: "1",
-          cover: "",
-          cover_big: "",
-          vote_average: 0
-        },
-        {
-          air_date: "2025-08-14",
-          episode_count: "13",
-          name: "Temporada 2",
-          overview: "",
-          season_number: "2",
-          cover: "",
-          cover_big: "",
-          vote_average: 0
-        },
-        {
-          air_date: "2025-08-14",
-          episode_count: "13",
-          name: "Temporada 3",
-          overview: "",
-          season_number: "3",
-          cover: "",
-          cover_big: "",
-          vote_average: 0
-        },
-        {
-          air_date: "2025-08-14",
-          episode_count: "13",
-          name: "Temporada 4",
-          overview: "",
-          season_number: "4",
-          cover: "",
-          cover_big: "",
-          vote_average: 0
-        },
-        {
-          air_date: "2025-08-14",
-          episode_count: "16",
-          name: "Temporada 5",
-          overview: "",
-          season_number: "5",
-          cover: "",
-          cover_big: "",
-          vote_average: 0
-        }
-      ],
-      info: {
-        name: "Breaking Bad: A Química do Mal [L] (2008)",
-        title: "Breaking Bad: A Química do Mal [L]",
-        year: "2008",
-        cover: "https://image.tmdb.org/t/p/w780/30erzlzIOtOK3k3T3BAl1GiVMP1.jpg",
-        plot: "Ao saber que tem câncer, um professor passa a fabricar metanfetamina pelo futuro da família, mudando o destino de todos.",
-        cast: "Bryan Cranston, Aaron Paul, Anna Gunn, RJ Mitte, Dean Norris",
-        director: "Michelle MacLaren",
-        genre: "Drama, Crime",
-        release_date: "2008-01-20",
-        releaseDate: "2008-01-20",
-        last_modified: "1736505758",
-        rating: "9",
-        rating_5based: 4.5,
-        backdrop_path: [
-          "https://image.tmdb.org/t/p/w1280/9faGSFi5jam6pDWGNd0p8JcJgXQ.jpg"
-        ],
-        youtube_trailer: "XrVlzrRECY4",
-        episode_run_time: "45",
-        category_id: "169",
-        category_ids: [169]
-      },
-      episodes: {
-        "1": [
-          {
-            id: "881475",
-            episode_num: "1",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E01",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Um professor de química do ensino médio começa a vender drogas para sustentar sua família.",
-              duration_secs: 3501,
-              duration: "00:58:21",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/ydlY3iPfeOAvu8gVqrxPoMvzNCn.jpg",
-              bitrate: 0,
-              rating: 8.083,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/ydlY3iPfeOAvu8gVqrxPoMvzNCn.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          },
-          {
-            id: "881476",
-            episode_num: "2",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E02",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "O saldo da primeira transação fracassada de Walt e Jesse é de dois cadáveres e sua desova. Skyler suspeita que seu marido esteja tramando algo.",
-              duration_secs: 2903,
-              duration: "00:48:23",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/tjDNvbokPLtEnpFyFPyXMOd6Zr1.jpg",
-              bitrate: 0,
-              rating: 8.102,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/tjDNvbokPLtEnpFyFPyXMOd6Zr1.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          },
-          {
-            id: "881477",
-            episode_num: "3",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E03",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Enquanto Walt limpa a bagunça que foi deixada após a primeira venda de drogas, ele pensa em contar a Skyler o segredo sobre a sua doença.",
-              duration_secs: 2903,
-              duration: "00:48:23",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/2kBeBlxGqBOdWlKwzAxiwkfU5on.jpg",
-              bitrate: 0,
-              rating: 8.158,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/2kBeBlxGqBOdWlKwzAxiwkfU5on.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          },
-          {
-            id: "881478",
-            episode_num: "4",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E04",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Forçado a revelar a verdade sobre sua doença, Walt enfrenta o dilema de pagar pelos caros tratamentos de câncer.",
-              duration_secs: 2905,
-              duration: "00:48:25",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/i5BAJVhuIWfkoSqDID6FnQNCTVc.jpg",
-              bitrate: 0,
-              rating: 7.828,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/i5BAJVhuIWfkoSqDID6FnQNCTVc.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          },
-          {
-            id: "881479",
-            episode_num: "5",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E05",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Skyler organiza uma intervenção para persuadir Walt a aceitar a generosa oferta de seu antigo parceiro de pesquisa de pagar pelo seu tratamento de câncer.",
-              duration_secs: 2889,
-              duration: "00:48:09",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/82G3wZgEvZLKcte6yoZJahUWBtx.jpg",
-              bitrate: 0,
-              rating: 8.144,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/82G3wZgEvZLKcte6yoZJahUWBtx.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          },
-          {
-            id: "881480",
-            episode_num: "6",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E06",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Conforme os efeitos colaterais e os custos do seu tratamento aumentam rapidamente, Walt exige que Jesse encontre um grande comprador para suas drogas, deixando Jesse encrencado com um perigoso ex-presidiário.",
-              duration_secs: 2897,
-              duration: "00:48:17",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/hyYwqbmcHn3fuxWE3h4IhZZbkU3.jpg",
-              bitrate: 0,
-              rating: 8.879,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/hyYwqbmcHn3fuxWE3h4IhZZbkU3.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          },
-          {
-            id: "881481",
-            episode_num: "7",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S01 E07",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Após Jesse escapar da morte, Walt concorda em produzir mais drogas para Tuco, enquanto Skyler suspeita que sua irmã roubou um presente de chá de bebê.",
-              duration_secs: 2873,
-              duration: "00:47:53",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/1dgFAsajUpUT7DLXgAxHb9GyXHH.jpg",
-              bitrate: 0,
-              rating: 8.374,
-              season: "01",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/1dgFAsajUpUT7DLXgAxHb9GyXHH.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505754",
-            season: 1,
-            direct_source: ""
-          }
-        ],
-        "2": [
-          {
-            id: "881482",
-            episode_num: "1",
-            title: "Breaking Bad: A Química do Mal [L] (2008) S02 E01",
-            container_extension: "mp4",
-            info: {
-              releasedate: "",
-              plot: "Enquanto planejam sua última grande venda, Walt e Jesse temem que Tuco esteja pensando em matá-los assim que a entrega for feita.",
-              duration_secs: 2845,
-              duration: "00:47:25",
-              movie_image: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/7vVujNqjP23MtPqUTBNITIW3DDA.jpg",
-              bitrate: 0,
-              rating: 8.326,
-              season: "02",
-              tmdb_id: "",
-              cover_big: "http://timg.bdta.pro/t/p/w600_and_h900_bestv2/7vVujNqjP23MtPqUTBNITIW3DDA.jpg"
-            },
-            subtitles: [],
-            custom_sid: "",
-            added: "1736505755",
-            season: 2,
-            direct_source: ""
-          }
-        ]
-      }
-    };
-    
-    setSelectedSeries(breakingBadData);
+    setSelectedSeriesId(series._id);
     setShowSeriesInfo(true);
   };
 
   const handleSeriesInfoBackPress = () => {
     setShowSeriesInfo(false);
-    setSelectedSeries(null);
+    setSelectedSeriesId(null);
   };
 
-  if (showSeriesInfo && selectedSeries) {
-    return <SeriesInfoPage onBackPress={handleSeriesInfoBackPress} seriesData={selectedSeries} />;
+  // Log category selection for future API integration
+  React.useEffect(() => {
+    const categoryId = getCategoryIdForAPI();
+    console.log('Selected series category:', selectedCategory, 'Category ID for API:', categoryId);
+  }, [selectedCategory]);
+
+  if (showSeriesInfo && selectedSeriesId) {
+    return <SeriesInfoPage onBackPress={handleSeriesInfoBackPress} seriesId={selectedSeriesId} onVideoPlayerOpen={onVideoPlayerOpen} />;
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardDismissWrapper style={styles.container}>
       <LinearGradient
-        colors={['#000000', '#110546', '#0B033A', '#110546', '#000000']}
+        colors={['#000000', '#160000', '#420000', '#160000', '#000000']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         locations={[0, 0.4, 0.6, 0.7, 1]}
@@ -511,7 +273,9 @@ export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProp
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Text style={styles.searchIcon}>
+                <Search size={getResponsiveIconSize(20)} color="#ffffff" /> 
+              </Text>
               <TextInput
                 style={styles.searchInput}
                 placeholder="Artists, Films, Tv shows ..."
@@ -524,39 +288,77 @@ export default function SeriesDetailsPage({ onBackPress }: SeriesDetailsPageProp
 
           {/* Category Chips */}
           <View style={styles.categoriesContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {categories.map((category) => (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={categoriesLoading ? [] : allCategories}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
                 <CategoryChip
-                  key={category}
-                  title={category}
-                  isActive={selectedCategory === category}
-                  onPress={() => setSelectedCategory(category)}
+                  title={item.category_name}
+                  isActive={selectedCategory === item.category_name}
+                  onPress={() => setSelectedCategory(item.category_name)}
                 />
-              ))}
-            </ScrollView>
+              )}
+              ListEmptyComponent={() => (
+                <Text style={styles.loadingText}>
+                  Loading categories...
+                </Text>
+              )}
+            />
           </View>
         </View>
 
-        {/* Scrollable Series Grid */}
-        <ScrollView 
-          style={styles.scrollableContent} 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContentContainer}
-        >
-          <View style={styles.seriesGrid}>
-            {series.map((seriesItem) => (
-              <SeriesCard
-                key={seriesItem.id}
-                title={seriesItem.title}
-                platform={seriesItem.platform}
-                imageUrl={seriesItem.imageUrl}
-                onPress={() => handleSeriesPress(seriesItem)}
-              />
-            ))}
-          </View>
-        </ScrollView>
+        {/* Series Grid with Infinite Scrolling */}
+        <View style={styles.scrollableContent}>
+          {seriesLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#420000" />
+              <Text style={styles.loadingText}>Loading series...</Text>
+            </View>
+          ) : seriesError ? (
+            <ServerErrorScreen 
+              message="Failed to load series. Please check your connection and try again."
+              onRetry={refetchSeries}
+            />
+          ) : series.length === 0 ? (
+            <EmptySeriesState 
+              searchQuery={searchQuery} 
+              selectedCategory={selectedCategory} 
+            />
+          ) : (
+            <FlatList
+              data={series}
+              renderItem={({ item }) => (
+                <SeriesCard
+                  series={item}
+                  onPress={() => handleSeriesPress(item)}
+                />
+              )}
+              keyExtractor={(item, index) => `${item._id}-${index}`}
+              numColumns={3}
+              columnWrapperStyle={styles.seriesRow}
+              contentContainerStyle={styles.seriesGrid}
+              showsVerticalScrollIndicator={false}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
+              ListFooterComponent={() => (
+                <View style={styles.footerContainer}>
+                  {seriesFetching && !seriesLoading ? (
+                    <ActivityIndicator size="small" color="#420000" />
+                  ) : isEndReached ? (
+                    <Text style={styles.endMessage}>No more series to load</Text>
+                  ) : null}
+                </View>
+              )}
+              // Ensure proper spacing and layout
+              key={`${width}-${headerHeight}`} // Re-render when screen width or header height changes
+            />
+          )}
+        </View>
       </LinearGradient>
-    </View>
+    </KeyboardDismissWrapper>
   );
 }
 
@@ -578,75 +380,75 @@ const styles = StyleSheet.create({
   },
   scrollableContent: {
     flex: 1,
-    marginTop: 200,
+    marginTop: headerHeight, // Use calculated header height to prevent overlap
   },
   scrollContentContainer: {
-    paddingBottom: 120,
+    paddingBottom: getResponsiveSpacing(40), // Reduced from 80 to 40
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: getResponsiveSpacing(20),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(20),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getResponsiveIconSize(40),
+    height: getResponsiveIconSize(40),
+    borderRadius: getResponsiveIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: getResponsiveSpacing(16),
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: getResponsiveIconSize(24),
     color: '#FFFFFF',
     fontWeight: '300',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: responsiveStyles.subtitle.fontSize,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(16),
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: getResponsiveSpacing(12),
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(8),
   },
   searchIcon: {
-    fontSize: 18,
-    marginRight: 12,
+    fontSize: responsiveStyles.caption.fontSize,
+    marginRight: getResponsiveSpacing(12),
     color: 'rgba(255, 255, 255, 0.6)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: '#FFFFFF',
   },
   categoriesContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsiveSpacing(16),
   },
   chip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: getResponsiveSpacing(20),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginRight: 12,
+    marginRight: getResponsiveSpacing(12),
   },
   activeChip: {
-    backgroundColor: '#A259FF',
+    backgroundColor: '#420000',
   },
   chipText: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
@@ -655,22 +457,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   seriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
+    paddingTop: getResponsiveSpacing(50), // Increased top padding to ensure cards are visible
+    paddingBottom: getResponsivePadding(20),
+  },
+  seriesRow: {
     justifyContent: 'space-between',
-    paddingTop: 30,
+    paddingHorizontal: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(20),
+    gap: getResponsiveSpacing(10),
+    // Ensure proper distribution of cards
+    alignItems: 'flex-start',
   },
   seriesCard: {
     width: cardWidth,
-    marginBottom: 20,
-    borderRadius: 12,
+    borderRadius: getResponsiveSpacing(12),
     overflow: 'hidden',
   },
   seriesImage: {
     width: '100%',
+    height: cardWidth * 1.5, // 3:2 aspect ratio
+    backgroundColor: '#2a2a2a',
+  },
+  placeholderContainer: {
+    width: '100%',
     height: cardWidth * 1.5,
     backgroundColor: '#2a2a2a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: getResponsiveSpacing(12),
+  },
+  placeholderIcon: {
+    fontSize: getResponsiveIconSize(32),
+    marginBottom: getResponsiveSpacing(8),
+  },
+  placeholderText: {
+    fontSize: responsiveStyles.small.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
   },
   seriesOverlay: {
     position: 'absolute',
@@ -678,16 +501,84 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 8,
+    padding: getResponsiveSpacing(8),
   },
   seriesTitle: {
-    fontSize: 12,
+    fontSize: responsiveStyles.small.fontSize,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 2,
+    marginBottom: getResponsiveSpacing(2),
   },
   seriesPlatform: {
-    fontSize: 10,
+    fontSize: responsiveStyles.tiny.fontSize,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  loadingText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontStyle: 'italic',
+  },
+  errorText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: '#FF6B6B',
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: getResponsiveSpacing(40),
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: getResponsiveSpacing(40),
+  },
+  retryButton: {
+    backgroundColor: '#420000',
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: getResponsiveSpacing(8),
+    marginTop: getResponsiveSpacing(16),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  footerContainer: {
+    paddingVertical: getResponsivePadding(20),
+    alignItems: 'center',
+  },
+  endMessage: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontStyle: 'italic',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: getResponsiveSpacing(60),
+    paddingHorizontal: getResponsivePadding(40),
+  },
+  emptyStateImage: {
+    width: getResponsiveSpacing(120),
+    height: getResponsiveSpacing(120),
+    marginBottom: getResponsiveSpacing(24),
+    opacity: 0.8,
+  },
+  emptyStateTitle: {
+    fontSize: responsiveStyles.subtitle.fontSize,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: getResponsiveSpacing(12),
+  },
+  emptyStateMessage: {
+    fontSize: responsiveStyles.body.fontSize,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    lineHeight: getResponsiveSpacing(24),
   },
 });

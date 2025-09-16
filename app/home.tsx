@@ -1,290 +1,252 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import HeroCarousel, { FeaturedMovie } from '../components/HeroCarousel';
-import MovieSection from '../components/MovieSection';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import LiveTvSection from '../components/LiveTvSection';
+import SeriesSection from '../components/SeriesSection';
+import { ErrorScreenWrapper } from '../src/components/common/ErrorScreens';
+import { withErrorHandling } from '../src/components/common/withErrorHandling';
+import HeroCarousel from '../src/components/HeroCarousel';
+import SectionComponent from '../src/components/SectionComponent';
+import { useLiveTvSections } from '../src/hooks/useLiveTvSections';
+import { useRetry } from '../src/hooks/useRetry';
+import { useSections } from '../src/hooks/useSections';
+import { useSeriesSections } from '../src/hooks/useSeriesSections';
+import { FeaturedContent } from '../src/types';
+import { getResponsiveSpacing, responsiveStyles } from '../src/utils/responsive';
+import LiveTvInfoPage from './live-tv-info';
+import MovieInfoPage from './movie-info';
+import SeriesInfoPage from './series-info';
 
-// Featured movies data for hero carousel
-const featuredMovies: FeaturedMovie[] = [
-  {
-    id: 1,
-    title: 'MOBLAND',
-    subtitle: 'Paramount+ Original',
-    description: 'Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within.',
-    genre: 'Action',
-    year: 2025,
-    rating: 7.2,
-    duration: '102 min',
-    image: 'https://bollynewsuk.com/wp-content/uploads/2023/07/heart-of-stone-uk-netflix-poster-2.jpg' // [1][3][13]
-  },
-  {
-    id: 2,
-    title: 'ADOLESCENCE',
-    subtitle: 'Netflix Original Series',
-    description: 'A coming-of-age story about a young person navigating the complexities of adolescence, friendship, and self-discovery in a modern world.',
-    genre: 'Drama',
-    year: 2025,
-    rating: 8.1,
-    duration: '45 min',
-    image: 'https://pbs.twimg.com/media/Ec_7SzOUEAAuGit.jpg:large' // [14]
-  },
-  {
-    id: 3,
-    title: 'WOLFMAN',
-    subtitle: 'HBO Max Exclusive',
-    description: 'A thrilling supernatural horror film that follows the transformation of a man into a werewolf and his struggle to control his newfound powers.',
-    genre: 'Horror',
-    year: 2025,
-    rating: 6.8,
-    duration: '118 min',
-    image: 'https://www.tallengestore.com/cdn/shop/products/Extraction-ChrisHemsworth-NetflixHollywoodBlockbusterEnglishMoviePoster_01e59f1b-5364-4d6c-b17f-b8ffea84fd1e.jpg?v=1589271987' // [7][15]
-  },
-  {
-    id: 4,
-    title: 'EVERYTHING',
-    subtitle: 'Amazon Prime Original',
-    description: 'An epic sci-fi adventure that explores the mysteries of the universe and humanity\'s place within it through stunning visuals and compelling storytelling.',
-    genre: 'Sci-Fi',
-    year: 2025,
-    rating: 8.5,
-    duration: '142 min',
-    image: 'https://cdn.dribbble.com/userupload/15632169/file/original-e8c1abbabd1f0100eeb8a927258db3d9.jpg?resize=400x0' // Sample Google image search for placeholder, replace with preferred public image
-  },
-  {
-    id: 5,
-    title: 'SHADOW REALM',
-    subtitle: 'Disney+ Special',
-    description: 'A fantasy tale where a young warrior must cross into the Shadow Realm to save their village from an ancient curse.',
-    genre: 'Fantasy',
-    year: 2025,
-    rating: 7.9,
-    duration: '129 min',
-    image: 'https://cdn.europosters.eu/image/350/posters/wednesday-umbrella-i185538.jpg' // [9]
-  },
-  {
-    id: 6,
-    title: 'NEON FUTURE',
-    subtitle: 'Apple TV+ Original',
-    description: 'Set in a cyberpunk future, a hacker discovers a secret that could redefine the relationship between man and machine.',
-    genre: 'Sci-Fi',
-    year: 2025,
-    rating: 8.3,
-    duration: '124 min',
-    image: 'https://cdn01.justjaredjr.com/wp-content/uploads/2020/08/millie-enola-poster/millie-bobby-brown-shares-enola-holmes-movie-poster-01.jpg' // Unsplash search for public cyberpunk/neon future imagery
-  },
-  {
-    id: 7,
-    title: 'LAST HAVEN',
-    subtitle: 'Peacock Exclusive',
-    description: 'In a post-apocalyptic world, a small town becomes the last safe haven for humanity as outside forces threaten to invade.',
-    genre: 'Thriller',
-    year: 2025,
-    rating: 7.5,
-    duration: '131 min',
-    image: 'https://static1.tribute.ca/poster/660x980/bright-netflix-122195.jpg' // Unsplash search for public dystopian/safe haven imagery
-  },
-  {
-    id: 8,
-    title: 'MOONFALL',
-    subtitle: 'Lionsgate Pictures',
-    description: 'As the moon is knocked off orbit, a team of astronauts must prevent it from crashing into Earth in a desperate race against time.',
-    genre: 'Sci-Fi',
-    year: 2025,
-    rating: 6.7,
-    duration: '120 min',
-    image: 'https://www.tallengestore.com/cdn/shop/products/MoneyHeist-Professor-NetflixTVShowMoviePoster_68fb5595-7dfc-4c95-ab4d-36237da1cebd.jpg?v=1589789097' // [20]
-  },
-  {
-    id: 9,
-    title: 'THE LOST SONG',
-    subtitle: 'Hulu Exclusive',
-    description: 'A deeply emotional musical journey about a prodigy searching for a legendary lost symphony that holds secrets to her past.',
-    genre: 'Musical/Drama',
-    year: 2025,
-    rating: 8.0,
-    duration: '137 min',
-    image: 'https://mlpnk72yciwc.i.optimole.com/cqhiHLc.IIZS~2ef73/w:auto/h:auto/q:75/https://bleedingcool.com/wp-content/uploads/2018/07/extinction.jpg' // Pexels public image, music/concert thematic
-  },
-  {
-    id: 10,
-    title: 'GHOST PROTOCOL',
-    subtitle: 'Universal Pictures',
-    description: 'A suspenseful spy thriller where an undercover agent must stop an international conspiracy before the world descends into chaos.',
-    genre: 'Action/Thriller',
-    year: 2025,
-    rating: 8.4,
-    duration: '118 min',
-    image: 'https://i0.wp.com/screen-connections.com/wp-content/uploads/2021/10/Red.Notice-Official.One_.Sheet_.Poster-01.jpg?resize=691%2C1024&ssl=1' // Unsplash public spy/thriller aesthetic
-  }
-];
-
-// Sample data for movie sections using featured movies' image URLs
-const todaysTopPicks = [
-  {
-    id: 1,
-    title: 'MOBLAND',
-    poster: 'https://bollynewsuk.com/wp-content/uploads/2023/07/heart-of-stone-uk-netflix-poster-2.jpg'
-  },
-  {
-    id: 2,
-    title: 'ADOLESCENCE',
-    poster: 'https://pbs.twimg.com/media/Ec_7SzOUEAAuGit.jpg:large'
-  },
-  {
-    id: 3,
-    title: 'WOLFMAN',
-    poster: 'https://www.tallengestore.com/cdn/shop/products/Extraction-ChrisHemsworth-NetflixHollywoodBlockbusterEnglishMoviePoster_01e59f1b-5364-4d6c-b17f-b8ffea84fd1e.jpg?v=1589271987'
-  },
-  {
-    id: 4,
-    title: 'EVERYTHING',
-    poster: 'https://cdn.dribbble.com/userupload/15632169/file/original-e8c1abbabd1f0100eeb8a927258db3d9.jpg?resize=400x0'
-  },
-  {
-    id: 5,
-    title: 'SHADOW REALM',
-    poster: 'https://cdn.europosters.eu/image/350/posters/wednesday-umbrella-i185538.jpg'
-  }
-];
-
-const koreanDramas = [
-  {
-    id: 6,
-    title: 'NEON FUTURE',
-    poster: 'https://cdn01.justjaredjr.com/wp-content/uploads/2020/08/millie-enola-poster/millie-bobby-brown-shares-enola-holmes-movie-poster-01.jpg'
-  },
-  {
-    id: 7,
-    title: 'LAST HAVEN',
-    poster: 'https://static1.tribute.ca/poster/660x980/bright-netflix-122195.jpg'
-  },
-  {
-    id: 8,
-    title: 'MOONFALL',
-    poster: 'https://www.tallengestore.com/cdn/shop/products/MoneyHeist-Professor-NetflixTVShowMoviePoster_68fb5595-7dfc-4c95-ab4d-36237da1cebd.jpg?v=1589789097'
-  },
-  {
-    id: 9,
-    title: 'THE LOST SONG',
-    poster: 'https://mlpnk72yciwc.i.optimole.com/cqhiHLc.IIZS~2ef73/w:auto/h:auto/q:75/https://bleedingcool.com/wp-content/uploads/2018/07/extinction.jpg'
-  }
-];
-
-const crimeThrillers = [
-  {
-    id: 10,
-    title: 'GHOST PROTOCOL',
-    poster: 'https://i0.wp.com/screen-connections.com/wp-content/uploads/2021/10/Red.Notice-Official.One_.Sheet_.Poster-01.jpg?resize=691%2C1024&ssl=1'
-  },
-  {
-    id: 11,
-    title: 'MOBLAND',
-    poster: 'https://bollynewsuk.com/wp-content/uploads/2023/07/heart-of-stone-uk-netflix-poster-2.jpg'
-  },
-  {
-    id: 12,
-    title: 'WOLFMAN',
-    poster: 'https://www.tallengestore.com/cdn/shop/products/Extraction-ChrisHemsworth-NetflixHollywoodBlockbusterEnglishMoviePoster_01e59f1b-5364-4d6c-b17f-b8ffea84fd1e.jpg?v=1589271987'
-  },
-  {
-    id: 13,
-    title: 'EVERYTHING',
-    poster: 'https://cdn.dribbble.com/userupload/15632169/file/original-e8c1abbabd1f0100eeb8a927258db3d9.jpg?resize=400x0'
-  }
-];
-
-const awardWinningThrillers = [
-  {
-    id: 14,
-    title: 'SHADOW REALM',
-    poster: 'https://cdn.europosters.eu/image/350/posters/wednesday-umbrella-i185538.jpg'
-  },
-  {
-    id: 15,
-    title: 'NEON FUTURE',
-    poster: 'https://cdn01.justjaredjr.com/wp-content/uploads/2020/08/millie-enola-poster/millie-bobby-brown-shares-enola-holmes-movie-poster-01.jpg'
-  },
-  {
-    id: 16,
-    title: 'LAST HAVEN',
-    poster: 'https://static1.tribute.ca/poster/660x980/bright-netflix-122195.jpg'
-  },
-  {
-    id: 17,
-    title: 'MOONFALL',
-    poster: 'https://www.tallengestore.com/cdn/shop/products/MoneyHeist-Professor-NetflixTVShowMoviePoster_68fb5595-7dfc-4c95-ab4d-36237da1cebd.jpg?v=1589789097'
-  }
-];
 
 interface HomePageProps {
   onToggleBottomNav?: (hide: boolean) => void;
+  onVideoPlayerOpen?: (title?: string, videoUrl?: string) => void;
 }
 
-export default function HomePage({ onToggleBottomNav }: HomePageProps) {
-  const [selectedMovie, setSelectedMovie] = useState<FeaturedMovie | null>(null);
+function HomePage({ onToggleBottomNav, onVideoPlayerOpen }: HomePageProps) {
+  const router = useRouter();
+  const [selectedMovie, setSelectedMovie] = useState<FeaturedContent | null>(null);
+  const [showMovieInfo, setShowMovieInfo] = useState(false);
+  const [selectedSeries, setSelectedSeries] = useState<any>(null);
+  const [showSeriesInfo, setShowSeriesInfo] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<any>(null);
+  const [showLiveTvInfo, setShowLiveTvInfo] = useState(false);
 
-  const handleMoviePress = (movie: FeaturedMovie) => {
+  // Fetch sections from API
+  const { sections, isLoading: sectionsLoading, error: sectionsError, refetch: refetchSections } = useSections();
+  
+  // Fetch series sections from API
+  const { data: seriesSectionsData, isLoading: seriesSectionsLoading, error: seriesSectionsError, refetch: refetchSeriesSections } = useSeriesSections();
+  
+  // Fetch Live TV sections from API
+  const { data: liveTvSectionsData, isLoading: liveTvSectionsLoading, error: liveTvSectionsError, refetch: refetchLiveTvSections } = useLiveTvSections();
+  
+  // Retry mechanism
+  const { retry: retrySections, isRetrying } = useRetry({
+    maxRetries: 3,
+    onRetry: (attempt) => console.log(`Retrying sections fetch, attempt ${attempt}`),
+  });
+
+  const { retry: retrySeriesSections, isRetrying: isRetryingSeries } = useRetry({
+    maxRetries: 3,
+    onRetry: (attempt) => console.log(`Retrying series sections fetch, attempt ${attempt}`),
+  });
+
+  const { retry: retryLiveTvSections, isRetrying: isRetryingLiveTv } = useRetry({
+    maxRetries: 3,
+    onRetry: (attempt) => console.log(`Retrying Live TV sections fetch, attempt ${attempt}`),
+  });
+
+  const handleMoviePress = (movie: FeaturedContent) => {
     console.log('Movie pressed:', movie.title);
     setSelectedMovie(movie);
     // You can add navigation to movie details here
   };
 
-  const handlePlayPress = (movie: FeaturedMovie) => {
+  const handlePlayPress = (movie: FeaturedContent) => {
     console.log('Play pressed:', movie.title);
-    // You can add video player logic here
-    onToggleBottomNav?.(true); // Hide bottom navigation when playing
+    setSelectedMovie(movie);
+    setShowMovieInfo(true);
+  };
+
+  const handleMoreInfoPress = (movie: FeaturedContent) => {
+    console.log('More Info pressed for movie ID:', movie.id);
+    setSelectedMovie(movie);
+    setShowMovieInfo(true);
+  };
+
+  const handleMovieInfoBackPress = () => {
+    setShowMovieInfo(false);
+    setSelectedMovie(null);
+  };
+
+  const handleRetry = async () => {
+    try {
+      await retrySections(() => refetchSections());
+      await retrySeriesSections(() => refetchSeriesSections());
+      await retryLiveTvSections(() => refetchLiveTvSections());
+    } catch (error) {
+      console.error('Retry failed:', error);
+    }
   };
 
   const handleSectionMoviePress = (movie: any) => {
-    console.log('Section movie pressed:', movie.title);
-    // You can add navigation to movie details here
+    console.log('Section movie pressed:', movie.title || movie.name);
+    console.log('Movie ID:', movie._id);
+    setSelectedMovie({
+      id: movie._id,
+      title: movie.title || movie.name,
+      subtitle: movie.year && movie.year !== '0' ? movie.year : undefined,
+      description: '',
+      genre: '',
+      year: parseInt(movie.year) || 0,
+      rating: movie.rating || 0,
+      image: movie.stream_icon,
+      type: 'Movie' as const,
+    });
+    setShowMovieInfo(true);
   };
 
-  // Log the featured movies data for debugging
-  console.log('Featured movies loaded:', featuredMovies.length);
+  const handleSeriesPress = (series: any) => {
+    console.log('Series pressed:', series.title || series.name);
+    console.log('Series ID:', series._id);
+    setSelectedSeries(series);
+    setShowSeriesInfo(true);
+  };
+
+  const handleSeriesInfoBackPress = () => {
+    setShowSeriesInfo(false);
+    setSelectedSeries(null);
+  };
+
+  const handleChannelPress = (channel: any) => {
+    console.log('Channel pressed:', channel.name);
+    console.log('Channel stream_id:', channel.stream_id);
+    setSelectedChannel(channel);
+    setShowLiveTvInfo(true);
+  };
+
+  const handleLiveTvInfoBackPress = () => {
+    setShowLiveTvInfo(false);
+    setSelectedChannel(null);
+  };
+
+  // Show movie info page if selected
+  if (showMovieInfo && selectedMovie) {
+    return <MovieInfoPage onBackPress={handleMovieInfoBackPress} movieId={selectedMovie.id} onVideoPlayerOpen={onVideoPlayerOpen} />;
+  }
+
+  // Show series info page if selected
+  if (showSeriesInfo && selectedSeries) {
+    return <SeriesInfoPage onBackPress={handleSeriesInfoBackPress} seriesId={selectedSeries._id} onVideoPlayerOpen={onVideoPlayerOpen} />;
+  }
+
+  // Show Live TV info page if selected
+  if (showLiveTvInfo && selectedChannel) {
+    return <LiveTvInfoPage onBackPress={handleLiveTvInfoBackPress} channelData={selectedChannel} streamId={selectedChannel.stream_id} onVideoPlayerOpen={onVideoPlayerOpen} />;
+  }
+
+  // Check if any API call has failed
+  const hasError = sectionsError || seriesSectionsError || liveTvSectionsError;
+  const isLoading = sectionsLoading || seriesSectionsLoading || liveTvSectionsLoading;
 
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Hero Carousel Section */}
-        <HeroCarousel
-          movies={featuredMovies}
-          onMoviePress={handleMoviePress}
-          onPlayPress={handlePlayPress}
-        />
-        
-        {/* Movie Sections */}
-        <MovieSection
-          title="Today's Top Picks for You"
-          movies={todaysTopPicks}
-          onMoviePress={handleSectionMoviePress}
-        />
-        
-        <MovieSection
-          title="Korean TV Dramas"
-          movies={koreanDramas}
-          onMoviePress={handleSectionMoviePress}
-        />
-        
-        <MovieSection
-          title="Crime Stories with a Romance Twist"
-          movies={crimeThrillers}
-          onMoviePress={handleSectionMoviePress}
-        />
-        
-        <MovieSection
-          title="Award-winning Binge-worthy Crime TV Thrillers"
-          movies={awardWinningThrillers}
-          onMoviePress={handleSectionMoviePress}
-        />
-        
-        {/* Bottom padding to prevent overlap with bottom navigation */}
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </View>
+    <ErrorScreenWrapper
+      error={hasError}
+      isLoading={isLoading}
+      onRetry={handleRetry}
+      serverErrorMessage="Failed to load content. Please check your connection and try again."
+      offlineMessage="You're offline. Please check your internet connection to view content."
+    >
+      <View style={styles.container}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Hero Carousel Section - Now uses API data */}
+          <HeroCarousel
+            onMoviePress={handleMoviePress}
+            onPlayPress={handlePlayPress}
+            onMoreInfoPress={handleMoreInfoPress}
+          />
+          
+          {/* Dynamic Sections from API */}
+          {sectionsLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#420000" />
+              <Text style={styles.loadingText}>Loading sections...</Text>
+            </View>
+          ) : sections.length > 0 ? (
+            sections
+              .filter(section => section.active && section.categoryMovies.length > 0)
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((section) => (
+                <SectionComponent
+                  key={section._id}
+                  section={section}
+                  onMoviePress={handleSectionMoviePress}
+                />
+              ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No sections available</Text>
+            </View>
+          )}
+
+          {/* Series Sections */}
+          {seriesSectionsLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#420000" />
+              <Text style={styles.loadingText}>Loading series sections...</Text>
+            </View>
+          ) : seriesSectionsData?.data && seriesSectionsData.data.length > 0 ? (
+            seriesSectionsData.data
+              .filter(section => section.active && section.categorySeries.length > 0)
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((section) => {
+                // Flatten all series from all categories in this section
+                const allSeries = section.categorySeries.flatMap(category => category.series);
+                return (
+                  <SeriesSection
+                    key={section._id}
+                    title={section.title}
+                    series={allSeries}
+                    onSeriesPress={handleSeriesPress}
+                  />
+                );
+              })
+          ) : null}
+
+          {/* Live TV Sections */}
+          {liveTvSectionsLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#420000" />
+              <Text style={styles.loadingText}>Loading Live TV sections...</Text>
+            </View>
+          ) : liveTvSectionsData?.data && liveTvSectionsData.data.length > 0 ? (
+            liveTvSectionsData.data
+              .filter(section => section.active && section.categoryMovies.length > 0)
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((section) => {
+                // Flatten all channels from all categories in this section
+                const allChannels = section.categoryMovies.flatMap(category => category.movies);
+                return (
+                  <LiveTvSection
+                    key={section._id}
+                    title={section.title}
+                    channels={allChannels}
+                    onChannelPress={handleChannelPress}
+                  />
+                );
+              })
+          ) : null}
+          
+          {/* Bottom padding to prevent overlap with bottom navigation */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </View>
+    </ErrorScreenWrapper>
   );
 }
 
@@ -297,9 +259,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120, // Extra space for bottom navigation (80px height + 40px padding)
+    paddingBottom: 100, // Reduced extra space for bottom navigation
   },
   bottomPadding: {
     height: 40, // Additional padding at the bottom
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontStyle: 'italic',
+    marginTop: getResponsiveSpacing(16),
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  errorText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: '#FF6B6B',
+    fontStyle: 'italic',
+    marginBottom: getResponsiveSpacing(16),
+  },
+  retryButton: {
+    backgroundColor: '#420000',
+    paddingHorizontal: getResponsiveSpacing(20),
+    paddingVertical: getResponsiveSpacing(10),
+    borderRadius: getResponsiveSpacing(8),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  retryButtonDisabled: {
+    opacity: 0.6,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: responsiveStyles.body.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+  },
 });
+
+// Export with error handling
+export default withErrorHandling(HomePage);

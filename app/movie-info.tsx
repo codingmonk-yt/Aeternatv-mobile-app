@@ -1,89 +1,98 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ChevronLeft, PlayIcon, Share2Icon } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ErrorMessage } from "../src/components/common/ErrorMessage";
+import { useMovieDetails } from "../src/hooks/useMovieDetails";
+import { useOrientationLock } from "../src/hooks/useOrientationLock";
+import { useGetStreamUrlQuery } from "../src/store/api/apiSlice";
+import { getResponsiveIconSize, getResponsivePadding, getResponsiveSpacing, responsiveStyles } from "../src/utils/responsive";
+import VideoPlayerPage from "./video-player";
 
 const { width, height } = Dimensions.get("window");
 
 interface MovieInfoPageProps {
   onBackPress?: () => void;
-  movieData?: {
-    id: number;
-    title: string;
-    platform: string;
-    imageUrl: string;
-    genre?: string;
-    year?: string;
-    duration?: string;
-    rating?: string;
-    synopsis?: string;
-    cast?: Array<{
-      name: string;
-      character: string;
-      imageUrl: string;
-    }>;
-  };
+  movieId?: string;
+  onVideoPlayerOpen?: (title?: string, videoUrl?: string) => void;
 }
 
 export default function MovieInfoPage({
   onBackPress,
-  movieData,
+  movieId: propMovieId,
+  onVideoPlayerOpen,
 }: MovieInfoPageProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams();
   const [showFullSynopsis, setShowFullSynopsis] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  
+  // Lock orientation to portrait
+  useOrientationLock();
+  
+  // Get movieId from props or URL params
+  const movieId = propMovieId || (params.movieId ? String(params.movieId) : null);
+  
+  // Fetch movie details using the hook
+  const { movieDetails, similarMovies, isLoading, error, refetch } = useMovieDetails(movieId || '');
+  
+  // Stream URL API call - only trigger when we have provider and stream_id
+  const { 
+    data: streamData, 
+    isLoading: isStreamLoading, 
+    error: streamError,
+    refetch: refetchStream 
+  } = useGetStreamUrlQuery(
+    { 
+      providerId: movieDetails?.provider || '', 
+      streamId: movieDetails?.stream_id?.toString() || '' 
+    },
+    { 
+      skip: !movieDetails?.provider || !movieDetails?.stream_id || !showVideoPlayer 
+    }
+  );
 
-  // Default movie data if none provided
-  const movie = movieData || {
-    id: 1,
-    title: "The Gorge",
-    platform: "Apple TV+",
-    imageUrl:
-      "https://m.media-amazon.com/images/S/pv-target-images/aab0322a11698c77fe0dc30131b2ffdba59a73d3544a0b25cf5cb7d20e029f84.jpg",
-    genre: "Adventure, Action, Sci-Fi",
-    year: "2025",
-    duration: "105 min",
-    rating: "7.2",
-    synopsis:
-      "Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within. They work together to keep the secret in the gorge.",
-    cast: [
-      {
-        name: "Miles Teller",
-        character: "Jeff",
-        imageUrl:
-          "https://m.media-amazon.com/images/M/MV5BMTQ5MDU5MTktMDZkMy00NDU1LWIxM2UtODg5OGFiNmRhNDBjXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
-      },
-      {
-        name: "Anya Taylor-Joy",
-        character: "Sharon",
-        imageUrl:
-          "https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg",
-      },
-      {
-        name: "Sigourney Weaver",
-        character: "Mary",
-        imageUrl:
-          "https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg",
-      },
-      {
-        name: "Sonia",
-        character: "Sonia",
-        imageUrl:
-          "https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg",
-      },
-    ],
-  };
+  // Handle stream URL response
+  React.useEffect(() => {
+    if (streamData?.success && streamData.data?.streamUrl) {
+      setStreamUrl(streamData.data.streamUrl);
+    }
+  }, [streamData]);
+
+  // Handle video player opening when stream URL is ready
+  React.useEffect(() => {
+    if (showVideoPlayer && streamUrl && onVideoPlayerOpen && movieDetails) {
+      onVideoPlayerOpen(movieDetails.title, streamUrl);
+    }
+  }, [showVideoPlayer, streamUrl, onVideoPlayerOpen, movieDetails]);
+
+  // Debug logging to identify the issue
+  console.log('=== Movie Info Debug ===');
+  console.log('movieId:', movieId);
+  console.log('isLoading:', isLoading);
+  console.log('error:', error);
+  console.log('movieDetails:', movieDetails);
+  console.log('similarMovies:', similarMovies);
+  console.log('streamData:', streamData);
+  console.log('streamUrl:', streamUrl);
+  console.log('isStreamLoading:', isStreamLoading);
+  console.log('streamError:', streamError);
+  console.log('========================');
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -93,9 +102,84 @@ export default function MovieInfoPage({
     }
   };
 
+  // Show loading spinner if no movieId or still loading
+  if (!movieId || isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={styles.loadingText}>Loading movie info...</Text>
+      </View>
+    );
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <ErrorMessage error={error} onRetry={refetch} />
+        </View>
+      </View>
+    );
+  }
+
+  // Show error if no movie details found
+  if (!movieDetails) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + getResponsiveSpacing(10) }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.noDataText}>Movie not found</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Use API data
+  const movie = {
+    id: movieDetails.stream_id,
+    title: movieDetails.title,
+    platform: "Streaming Platform", // You can map this from provider if needed
+    imageUrl: movieDetails.cover_big || movieDetails.movie_image || movieDetails.stream_icon,
+    genre: movieDetails.genre || "Unknown",
+    year: movieDetails.year || "Unknown",
+    duration: movieDetails.duration || "Unknown",
+    rating: movieDetails.rating?.toString() || "0",
+    synopsis: movieDetails.description || movieDetails.plot || "No description available",
+    cast: movieDetails.actors ? movieDetails.actors.split(', ').map((actor: string, index: number) => ({
+      name: actor.trim(),
+      character: `Character ${index + 1}`,
+      imageUrl: "https://via.placeholder.com/60x60/2a2a2a/ffffff?text=?", // Placeholder for cast images
+    })) : [],
+  };
+
   const handlePlayPress = () => {
     console.log("Play button pressed for:", movie.title);
-    // TODO: Navigate to video player
+    console.log("Provider:", movieDetails?.provider);
+    console.log("Stream ID:", movieDetails?.stream_id);
+    
+    // Trigger stream URL API call
+    setShowVideoPlayer(true);
+  };
+
+  const handleCloseVideoPlayer = () => {
+    setShowVideoPlayer(false);
+    setStreamUrl(null);
   };
 
   const handleSharePress = async () => {
@@ -116,15 +200,72 @@ export default function MovieInfoPage({
     }
   };
 
-  const handleBookmarkPress = () => {
-    console.log("Bookmark button pressed");
-    // TODO: Implement bookmark functionality
-  };
 
   const truncatedSynopsis =
     movie.synopsis && movie.synopsis.length > 150
       ? movie.synopsis.substring(0, 150) + "..."
       : movie.synopsis;
+
+  // Show video player when stream URL is ready
+  if (showVideoPlayer && streamUrl) {
+    // If we have onVideoPlayerOpen prop, let the layout handle the video player
+    if (onVideoPlayerOpen) {
+      return null; // Let the layout handle the video player
+    }
+    
+    // Fallback to local video player if no onVideoPlayerOpen prop
+    return (
+      <VideoPlayerPage
+        videoUrl={streamUrl}
+        title={movie.title}
+        onBackPress={handleCloseVideoPlayer}
+      />
+    );
+  }
+
+  // Show loading state when fetching stream URL
+  if (showVideoPlayer && isStreamLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={styles.loadingText}>Loading video...</Text>
+        <TouchableOpacity 
+          style={styles.cancelButton} 
+          onPress={handleCloseVideoPlayer}
+        >
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Show error state if stream URL fetch failed
+  if (showVideoPlayer && streamError) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + getResponsiveSpacing(10) }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleCloseVideoPlayer}
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Failed to load video</Text>
+          <Text style={styles.errorMessage}>
+            Unable to get video stream. Please try again.
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => refetchStream()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -156,12 +297,14 @@ export default function MovieInfoPage({
           </View>
 
           {/* Header with back button and action buttons - Positioned above banner */}
-          <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.header, { paddingTop: insets.top + getResponsiveSpacing(10) }]}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleBackPress}
             >
-              <Text style={styles.backIcon}>‹</Text>
+              <Text style={styles.backIcon}>
+                <ChevronLeft color="#FFFFFF" />
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.headerActions}>
@@ -169,33 +312,18 @@ export default function MovieInfoPage({
                 style={styles.actionButton}
                 onPress={handleSharePress}
               >
-                <Text style={styles.actionIcon}>↗</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleBookmarkPress}
-              >
-                <Text style={styles.actionIcon}>♡</Text>
+                <Text style={styles.actionIcon}>
+                  <Share2Icon color="#FFFFFF" />
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Platform Logo */}
-          <View style={styles.platformLogo}>
+          {/* <View style={styles.platformLogo}>
             <Text style={styles.platformText}>{movie.platform}</Text>
-          </View>
+          </View> */}
 
-          {/* Play Button */}
-          <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
-            <LinearGradient
-              colors={["#A259FF", "#562199"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.playButtonGradient}
-            >
-              <Text style={styles.playIcon}>▶</Text>
-            </LinearGradient>
-          </TouchableOpacity>
 
           {/* Movie Title Overlay */}
           {/* <View style={styles.titleOverlay}>
@@ -207,6 +335,7 @@ export default function MovieInfoPage({
             <Text style={styles.originalFilm}>AN APPLE ORIGINAL FILM BY SKYDANCE</Text>
           </View> */}
         </View>
+
 
         {/* Movie Details */}
         <View style={styles.movieDetails}>
@@ -253,18 +382,41 @@ export default function MovieInfoPage({
               showsHorizontalScrollIndicator={false}
               style={styles.castScrollView}
             >
-              {movie.cast?.map((actor, index) => (
+              {movie.cast?.map((actor: any, index: number) => (
                 <View key={index} style={styles.castMember}>
-                  <Image
-                    source={{ uri: actor.imageUrl }}
-                    style={styles.castImage}
-                  />
+                  <LinearGradient
+                    colors={['#420000', '#2D0000', '#1A0000']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.castAvatar}
+                  >
+                    <Text style={styles.castAvatarText}>
+                      {actor.name?.charAt(0)?.toUpperCase() || '?'}
+                    </Text>
+                  </LinearGradient>
                   <Text style={styles.castName}>{actor.name}</Text>
-                  <Text style={styles.castCharacter}>{actor.character}</Text>
+                  {/* <Text style={styles.castCharacter}>{actor.character}</Text> */}
                 </View>
               ))}
             </ScrollView>
           </View>
+        </View>
+
+        {/* Play Button - Floating at bottom of banner */}
+        <View style={styles.playButtonContainer}>
+          <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
+            <LinearGradient
+              colors={["#420000", "#2D0000", "#1A0000"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.playButtonGradient}
+            >
+              <Text style={styles.playIcon}>
+                <PlayIcon fill="#FFFFFF" color="#FFFFFF" />
+              </Text>
+              <Text style={styles.playText}>Play</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -307,38 +459,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(20),
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    width: getResponsiveIconSize(40),
+    height: getResponsiveIconSize(40),
+    borderRadius: getResponsiveIconSize(20),
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
     justifyContent: "center",
     alignItems: "center",
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: getResponsiveIconSize(24),
     color: "#FFFFFF",
     fontWeight: "300",
   },
   headerActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: getResponsiveSpacing(12),
   },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    width: getResponsiveIconSize(40),
+    height: getResponsiveIconSize(40),
+    borderRadius: getResponsiveIconSize(20),
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
     justifyContent: "center",
     alignItems: "center",
   },
   actionIcon: {
-    fontSize: 18,
+    fontSize: getResponsiveIconSize(18),
     color: "#FFFFFF",
+    width: getResponsiveIconSize(20),
+    height: getResponsiveIconSize(20),
+    tintColor: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
@@ -359,35 +514,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  playButton: {
+  playButtonContainer: {
     position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: [{ translateX: -30 }, { translateY: -30 }],
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    zIndex: 5,
-  },
-  playButtonGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
+    top: height * 0.6 - getResponsiveSpacing(40), // Position at bottom of banner area
+    left: 0,
+    right: 0,
     alignItems: "center",
-    shadowColor: "#A259FF",
+    zIndex: 10,
+  },
+  playButton: {
+    width: getResponsiveSpacing(200),
+    height: getResponsiveSpacing(60),
+    borderRadius: getResponsiveSpacing(30),
+    shadowColor: "#420000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  playButtonGradient: {
+    width: getResponsiveSpacing(200),
+    height: getResponsiveSpacing(60),
+    borderRadius: getResponsiveSpacing(30),
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: getResponsivePadding(24),
   },
   playIcon: {
-    fontSize: 24,
+    fontSize: getResponsiveIconSize(20),
     color: "#FFFFFF",
-    marginLeft: 2,
+    marginRight: getResponsiveSpacing(8),
+  },
+  playText: {
+    fontSize: responsiveStyles.subtitle.fontSize,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   titleOverlay: {
     position: "absolute",
@@ -425,94 +590,161 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   movieDetails: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsiveSpacing(80), // Reduced from 100 to 80
     backgroundColor: "#000000",
-    paddingTop: 20,
+    paddingTop: getResponsiveSpacing(30), // Reduced from 50 to 30
   },
   movieTitleText: {
-    fontSize: 28,
+    fontSize: responsiveStyles.title.fontSize * 1.2,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(8),
   },
   genreText: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: "rgba(255, 255, 255, 0.7)",
-    marginBottom: 20,
+    marginBottom: getResponsiveSpacing(20),
   },
   infoBoxes: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: getResponsiveSpacing(24),
   },
   infoBox: {
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: getResponsiveSpacing(8),
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: getResponsiveSpacing(4),
     alignItems: "center",
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.6)",
-    marginBottom: 4,
+    marginBottom: getResponsiveSpacing(4),
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: "#FFFFFF",
     fontWeight: "600",
   },
   synopsisContainer: {
-    marginBottom: 32,
+    marginBottom: getResponsiveSpacing(32),
   },
   synopsisText: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: "rgba(255, 255, 255, 0.9)",
     lineHeight: 24,
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(8),
   },
   readMoreText: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.7)",
     textDecorationLine: "underline",
   },
   castContainer: {
-    marginBottom: 20,
+    marginBottom: getResponsiveSpacing(20),
   },
   castTitle: {
-    fontSize: 20,
+    fontSize: responsiveStyles.subtitle.fontSize,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 16,
+    marginBottom: getResponsiveSpacing(16),
   },
   castScrollView: {
     flexDirection: "row",
   },
   castMember: {
     alignItems: "center",
-    marginRight: 20,
-    width: 80,
+    marginRight: getResponsiveSpacing(20),
+    width: getResponsiveIconSize(80),
   },
-  castImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#2a2a2a",
-    marginBottom: 8,
+  castAvatar: {
+    width: getResponsiveIconSize(60),
+    height: getResponsiveIconSize(60),
+    borderRadius: getResponsiveIconSize(30),
+    marginBottom: getResponsiveSpacing(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  castAvatarText: {
+    fontSize: responsiveStyles.subtitle.fontSize,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   castName: {
-    fontSize: 12,
+    fontSize: responsiveStyles.caption.fontSize,
     fontWeight: "600",
     color: "#FFFFFF",
     textAlign: "center",
-    marginBottom: 2,
+    marginBottom: getResponsiveSpacing(2),
   },
   castCharacter: {
     fontSize: 10,
     color: "rgba(255, 255, 255, 0.7)",
     textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  noDataText: {
+    fontSize: 18,
+    color: "#CCCCCC",
+    textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#FFFFFF",
+    fontSize: responsiveStyles.body.fontSize,
+    marginTop: getResponsiveSpacing(16),
+  },
+  cancelButton: {
+    marginTop: getResponsiveSpacing(20),
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: getResponsiveSpacing(8),
+  },
+  cancelButtonText: {
+    color: "#FFFFFF",
+    fontSize: responsiveStyles.body.fontSize,
+    fontWeight: "600",
+  },
+  errorTitle: {
+    fontSize: responsiveStyles.title.fontSize,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: getResponsiveSpacing(8),
+    textAlign: "center",
+  },
+  errorMessage: {
+    fontSize: responsiveStyles.body.fontSize,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    marginBottom: getResponsiveSpacing(24),
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: "#420000",
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: getResponsiveSpacing(8),
+    alignSelf: "center",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: responsiveStyles.body.fontSize,
+    fontWeight: "600",
   },
 });

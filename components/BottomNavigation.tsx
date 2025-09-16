@@ -3,6 +3,7 @@ import { Home, Play, Search } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getResponsiveIconSize, getResponsivePadding, getResponsiveSpacing } from '../src/utils/responsive';
 
 interface BottomNavigationProps {
   activeTab: string;
@@ -41,19 +42,19 @@ export default function BottomNavigation({ activeTab, onTabPress }: BottomNaviga
           >
             {isActive ? (
               <LinearGradient
-                colors={['#A259FF', '#562199']}
+                colors={['#420000', "#3C0000", '#420000']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.activeGradient}
               >
                 <IconComponent
-                  size={24}
+                  size={getResponsiveIconSize(24)}
                   color="#ffffff"
                 />
               </LinearGradient>
             ) : (
               <IconComponent
-                size={22}
+                size={getResponsiveIconSize(22)}
                 color="#8E8E93"
                 opacity={0.8}
               />
@@ -68,16 +69,14 @@ export default function BottomNavigation({ activeTab, onTabPress }: BottomNaviga
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: getResponsiveSpacing(16),
+    right: getResponsiveSpacing(16),
     backgroundColor: 'rgba(28, 28, 30, 1)', // Full opacity
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    height: 80,
-    paddingBottom: 20,
-    paddingTop: 12,
-    borderRadius: 24, // All 4 corners rounded
+    height: 72,
+    borderRadius: getResponsiveSpacing(24), // All 4 corners rounded
     // Subtle border
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)', // Very thin white border
@@ -97,33 +96,33 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 24,
+    borderRadius: getResponsiveSpacing(24),
     pointerEvents: 'none',
   },
   activeTabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: getResponsiveIconSize(56),
+    height: getResponsiveIconSize(56),
+    borderRadius: getResponsiveSpacing(18),
     backgroundColor: 'transparent',
   },
   inactiveTabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: getResponsiveIconSize(48),
+    height: getResponsiveIconSize(48),
+    borderRadius: getResponsiveSpacing(16),
     backgroundColor: 'transparent',
   },
   activeGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: getResponsiveIconSize(56),
+    height: getResponsiveIconSize(56),
+    borderRadius: getResponsiveSpacing(18),
     alignItems: 'center',
     justifyContent: 'center',
     // Enhanced glow effect
-    shadowColor: '#A259FF',
+    shadowColor: '#420000',
     shadowOffset: {
       width: 0,
       height: 6,

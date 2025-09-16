@@ -11,32 +11,31 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useGetHeroCarouselQuery } from '../../store/api/apiSlice';
+import { FeaturedContent } from '../../types';
+import { getResponsivePadding, getResponsiveSpacing, responsiveStyles } from '../../utils/responsive';
+import { transformHeroCarouselItems } from '../../utils/transformers';
+import { ErrorMessage } from '../common/ErrorMessage';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export interface FeaturedMovie {
-  id: number;
-  title: string;
-  subtitle?: string;
-  description: string;
-  genre: string;
-  year: number;
-  rating: number;
-  duration: string;
-  image: string;
-  trailerUrl?: string;
-}
-
 interface HeroCarouselProps {
-  movies: FeaturedMovie[];
-  onMoviePress?: (movie: FeaturedMovie) => void;
-  onPlayPress?: (movie: FeaturedMovie) => void;
+  onMoviePress?: (movie: FeaturedContent) => void;
+  onPlayPress?: (movie: FeaturedContent) => void;
+  onMoreInfoPress?: (movie: FeaturedContent) => void;
 }
 
-export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: HeroCarouselProps) {
+export default function HeroCarousel({ onMoviePress, onPlayPress, onMoreInfoPress }: HeroCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const autoScrollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch hero carousel data using RTK Query
+  const { data, isLoading, error, refetch } = useGetHeroCarouselQuery();
+
+  // Transform API data to component format
+  const movies = data?.data ? transformHeroCarouselItems(data.data) : [];
 
   // Auto-scroll functionality
   useEffect(() => {
@@ -73,21 +72,25 @@ export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: Hero
     setCurrentIndex(index);
   };
 
-  const handleMoviePress = (movie: FeaturedMovie) => {
+  const handleMoviePress = (movie: FeaturedContent) => {
     onMoviePress?.(movie);
   };
 
-  const handlePlayPress = (movie: FeaturedMovie) => {
+  const handlePlayPress = (movie: FeaturedContent) => {
     onPlayPress?.(movie);
   };
 
-  const renderMovieSlide = (movie: FeaturedMovie, index: number) => {
+  const handleMoreInfoPress = (movie: FeaturedContent) => {
+    onMoreInfoPress?.(movie);
+  };
+
+  const renderMovieSlide = (movie: FeaturedContent, index: number) => {
     // Define gradient backgrounds for each movie as fallback
     const gradientColors = [
-      ['#1a1a2e', '#16213e', '#0f3460'] as const, // MOBLAND - Dark blue
-      ['#2c1810', '#8b4513', '#654321'] as const, // ADOLESCENCE - Brown
-      ['#2d1b1b', '#8b0000', '#4a0e0e'] as const, // WOLFMAN - Dark red
-      ['#1a1a2e', '#16213e', '#0f3460'] as const, // EVERYTHING - Dark blue
+      ['#1a1a2e', '#16213e', '#0f3460'] as const, // Dark blue
+      ['#2c1810', '#8b4513', '#654321'] as const, // Brown
+      ['#2d1b1b', '#8b0000', '#4a0e0e'] as const, // Dark red
+      ['#1a1a2e', '#16213e', '#0f3460'] as const, // Dark blue
     ];
 
     return (
@@ -121,16 +124,18 @@ export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: Hero
       {/* Content */}
       <View style={styles.content}>
         <View style={styles.movieInfo}>
-          <Text style={styles.title}>{movie.title}</Text>
+          <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+            {movie.title}
+          </Text>
           {/* {movie.subtitle && (
             <Text style={styles.subtitle}>{movie.subtitle}</Text>
           )} */}
           <View style={styles.movieMeta}>
-            <Text style={styles.genre}>{movie.genre}</Text>
+            <Text style={styles.genre} numberOfLines={1} ellipsizeMode="tail">{movie.genre}</Text>
             <Text style={styles.year}>{movie.year}</Text>
             <Text style={styles.rating}>⭐ {movie.rating}</Text>
           </View>
-          {/* <Text style={styles.description} numberOfLines={3}>
+          {/* <Text style={styles.description} numberOfLines={1} ellipsizeMode="tail">
             {movie.description}
           </Text> */}
         </View>
@@ -142,7 +147,7 @@ export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: Hero
             onPress={() => handlePlayPress(movie)}
           >
             <LinearGradient
-              colors={['#A259FF', '#562199']}
+              colors={['#420000', '#160000']}
               style={styles.playButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -151,7 +156,10 @@ export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: Hero
             </LinearGradient>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.infoButton}>
+          <TouchableOpacity 
+            style={styles.infoButton}
+            onPress={() => handleMoreInfoPress(movie)}
+          >
             <Text style={styles.infoButtonText}>ⓘ More Info</Text>
           </TouchableOpacity>
         </View>
@@ -160,22 +168,32 @@ export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: Hero
     );
   };
 
-  const renderPagination = () => (
-    <View style={styles.pagination}>
-      {movies.map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.paginationDot,
-            index === currentIndex && styles.paginationDotActive,
-          ]}
-        />
-      ))}
-    </View>
-  );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LoadingSpinner text="Loading featured content..." />
+      </View>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <ErrorMessage error={error} onRetry={refetch} />
+      </View>
+    );
+  }
+
+  // No data state
   if (movies.length === 0) {
-    return null;
+    return (
+      <View style={styles.container}>
+        <Text style={styles.noDataText}>No featured content available</Text>
+      </View>
+    );
   }
 
   return (
@@ -191,15 +209,13 @@ export default function HeroCarousel({ movies, onMoviePress, onPlayPress }: Hero
       >
         {movies.map((movie, index) => renderMovieSlide(movie, index))}
       </ScrollView>
-      
-      {movies.length > 1 && renderPagination()}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    height: screenHeight * 0.6, // 60% of screen height
+    height: screenHeight * 0.5, // 60% of screen height
     position: 'relative',
   },
   carousel: {
@@ -231,28 +247,28 @@ const styles = StyleSheet.create({
    content: {
      flex: 1,
      justifyContent: 'flex-end',
-     paddingHorizontal: 20,
-     paddingBottom: 80,
+     paddingHorizontal: getResponsivePadding(20),
+     paddingBottom: 40,
      paddingTop: 100,
    },
   movieInfo: {
-    marginBottom: 24,
+    marginBottom: getResponsiveSpacing(24),
   },
    title: {
-     fontSize: 32,
+     fontSize: responsiveStyles.title.fontSize * 1.2, // Slightly larger for hero
      fontWeight: 'bold',
      color: '#ffffff',
      fontFamily: 'Inter',
-     marginBottom: 8,
+     marginBottom: getResponsiveSpacing(8),
      textShadowColor: 'rgba(0, 0, 0, 0.9)',
      textShadowOffset: { width: 0, height: 2 },
      textShadowRadius: 6,
    },
   subtitle: {
-    fontSize: 18,
+    fontSize: responsiveStyles.subtitle.fontSize,
     color: '#cccccc',
     fontFamily: 'Inter',
-    marginBottom: 12,
+    marginBottom: getResponsiveSpacing(12),
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -260,31 +276,32 @@ const styles = StyleSheet.create({
   movieMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 16,
+    marginBottom: getResponsiveSpacing(2),
+    gap: getResponsiveSpacing(16),
   },
   genre: {
-    fontSize: 14,
-    color: '#A259FF',
+    fontSize: responsiveStyles.caption.fontSize,
+    color: '#420000',
     fontFamily: 'Inter',
     fontWeight: '600',
-    backgroundColor: 'rgba(162, 89, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: 'rgba(216, 216, 216, 0.45)',
+    paddingHorizontal: getResponsivePadding(8),
+    paddingVertical: getResponsivePadding(4),
+    borderRadius: getResponsiveSpacing(4),
+    maxWidth: 120,
   },
   year: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: '#ffffff',
     fontFamily: 'Inter',
   },
   rating: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: '#ffffff',
     fontFamily: 'Inter',
   },
   description: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: '#ffffff',
     fontFamily: 'Inter',
     lineHeight: 24,
@@ -295,56 +312,42 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: getResponsiveSpacing(16),
   },
   playButton: {
     borderRadius: 25,
     overflow: 'hidden',
   },
   playButtonGradient: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
   playButtonText: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     fontWeight: 'bold',
     color: '#ffffff',
     fontFamily: 'Inter',
   },
   infoButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(12),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 25,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   infoButtonText: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     fontWeight: '600',
     color: '#ffffff',
     fontFamily: 'Inter',
   },
-  pagination: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  paginationDotActive: {
-    backgroundColor: '#A259FF',
-    width: 24,
+  noDataText: {
+    fontSize: 18,
+    color: '#CCCCCC',
+    textAlign: 'center',
+    marginTop: 50,
   },
 });

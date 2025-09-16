@@ -126,9 +126,10 @@ const categoryTabs = ['New', 'Movies', 'TV shows', 'Kids'];
 
 interface WishlistPageProps {
   onToggleBottomNav?: (hide: boolean) => void;
+  onVideoPlayerOpen?: (title?: string) => void;
 }
 
-export default function WishlistPage({ onToggleBottomNav }: WishlistPageProps) {
+export default function WishlistPage({ onToggleBottomNav, onVideoPlayerOpen }: WishlistPageProps) {
   const [activeCategory, setActiveCategory] = useState('New');
   const [showNewReleased, setShowNewReleased] = useState(false);
   const [showRecentlyWatched, setShowRecentlyWatched] = useState(false);

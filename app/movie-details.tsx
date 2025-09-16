@@ -199,7 +199,7 @@ export default function MovieDetailsScreen({ movie, onBack, onPlay }: MovieDetai
             {/* Sticky Play Button */}
             <View style={styles.playButtonContainer}>
                 <LinearGradient
-                    colors={['#A259FF', '#562199']}
+                    colors={['#420000', '#160000']}
                     style={styles.playButton}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 0, y: 1 }}
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     readMore: {
         fontFamily: 'Inter',
         fontSize: 16,
-        color: '#A259FF',
+        color: '#420000',
         fontWeight: '500',
     },
     castSection: {

@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getResponsiveSpacing, responsiveStyles } from '../src/utils/responsive';
 
 export interface MovieItem {
   id: number;
@@ -119,44 +120,44 @@ const styles = StyleSheet.create({
     right: 0,
     height: '60%',
     justifyContent: 'flex-end',
-    padding: 12,
+    padding: getResponsiveSpacing(12),
   },
   movieContent: {
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(8),
   },
   movieTitle: {
     fontFamily: 'Inter',
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 2,
+    marginBottom: getResponsiveSpacing(2),
   },
   movieSubtitle: {
     fontFamily: 'Inter',
-    fontSize: 12,
+    fontSize: responsiveStyles.small.fontSize,
     color: '#cccccc',
-    marginBottom: 2,
+    marginBottom: getResponsiveSpacing(2),
   },
   moviePlatform: {
     fontFamily: 'Inter',
-    fontSize: 10,
+    fontSize: responsiveStyles.tiny.fontSize,
     color: '#ff6b6b',
     fontWeight: '600',
   },
   movieType: {
     fontFamily: 'Inter',
-    fontSize: 10,
+    fontSize: responsiveStyles.tiny.fontSize,
     color: '#ffffff',
-    marginTop: 2,
+    marginTop: getResponsiveSpacing(2),
   },
   movieDate: {
     fontFamily: 'Inter',
-    fontSize: 10,
+    fontSize: responsiveStyles.tiny.fontSize,
     color: '#ffffff',
-    marginTop: 2,
+    marginTop: getResponsiveSpacing(2),
   },
   progressContainer: {
-    marginTop: 8,
+    marginTop: getResponsiveSpacing(8),
   },
   progressBar: {
     height: 2,

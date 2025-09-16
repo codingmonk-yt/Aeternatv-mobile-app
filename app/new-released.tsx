@@ -333,8 +333,8 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
   },
   activeFilterChip: {
-    backgroundColor: '#A259FF',
-    borderColor: '#A259FF',
+    backgroundColor: '#420000',
+    borderColor: '#420000',
   },
   filterChipText: {
     fontFamily: 'Inter',
@@ -441,12 +441,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioButtonSelected: {
-    borderColor: '#A259FF',
+    borderColor: '#420000',
   },
   radioButtonInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#A259FF',
+    backgroundColor: '#420000',
   },
 });

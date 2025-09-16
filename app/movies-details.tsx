@@ -1,8 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Search } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
+    FlatList,
     Image,
     ScrollView,
     StyleSheet,
@@ -11,25 +14,108 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ServerErrorScreen } from '../src/components/common/ErrorScreens';
+import KeyboardDismissWrapper from '../src/components/common/KeyboardDismissWrapper';
+import { useDebounce } from '../src/hooks/useDebounce';
+import { useMovies } from '../src/hooks/useMovies';
+import { useVODCategories } from '../src/hooks/useVODCategories';
+import { getResponsiveIconSize, getResponsivePadding, getResponsiveSpacing, responsiveStyles } from '../src/utils/responsive';
 import MovieInfoPage from './movie-info';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 60) / 3; // 3 columns with margins
+
+// Import not-found illustration
+const notFoundImage = require('../assets/illustrations/not-found.png');
+
+// Calculate responsive card width based on available space and screen size
+const getCardWidth = () => {
+  const screenSize = width;
+  const horizontalPadding = getResponsivePadding(20) * 2; // Left and right padding
+  const gap = getResponsiveSpacing(10) * 2; // Gap between 3 cards
+  const availableWidth = screenSize - horizontalPadding - gap;
+  
+  // Calculate base width for 3 columns
+  let calculatedWidth = availableWidth / 3;
+  
+  // Adjust for different screen sizes
+  if (screenSize <= 375) {
+    // Small screens: ensure cards aren't too small
+    calculatedWidth = Math.max(calculatedWidth, 90);
+  } else if (screenSize <= 414) {
+    // Medium screens: standard sizing
+    calculatedWidth = Math.max(calculatedWidth, 100);
+  } else if (screenSize <= 768) {
+    // Large screens: can be larger
+    calculatedWidth = Math.max(calculatedWidth, 110);
+  } else {
+    // XLarge screens: maximum size
+    calculatedWidth = Math.max(calculatedWidth, 120);
+  }
+  
+  return calculatedWidth;
+};
+
+// Calculate responsive header height to prevent overlap
+const getHeaderHeight = () => {
+  const screenSize = width;
+  // Base header height calculation
+  const headerPadding = getResponsiveSpacing(20) * 2; // Top and bottom padding
+  const searchHeight = getResponsiveSpacing(50); // Search bar height
+  const categoriesHeight = getResponsiveSpacing(50); // Categories height
+  const baseHeight = headerPadding + searchHeight + categoriesHeight;
+  
+  // Add extra margin for smaller screens to prevent overlap
+  if (screenSize <= 375) {
+    return baseHeight + getResponsiveSpacing(40); // Extra margin for small screens
+  } else if (screenSize <= 414) {
+    return baseHeight + getResponsiveSpacing(30); // Extra margin for medium screens
+  } else {
+    return baseHeight + getResponsiveSpacing(20); // Standard margin for larger screens
+  }
+};
+
+const cardWidth = getCardWidth();
+const headerHeight = getHeaderHeight();
 
 interface MovieCardProps {
-  title: string;
-  platform: string;
-  imageUrl: string;
+  movie: any;
   onPress: () => void;
 }
 
-function MovieCard({ title, platform, imageUrl, onPress }: MovieCardProps) {
+function MovieCard({ movie, onPress }: MovieCardProps) {
+  const [imageError, setImageError] = useState(false);
+  
+  // Get the best available image URL
+  const imageUrl = movie.cover_big || movie.movie_image || movie.stream_icon;
+  
+  // Check if image URL is valid (not empty or just whitespace)
+  const hasValidImage = imageUrl && imageUrl.trim() !== '';
+  
+  // Reset image error when movie changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [movie._id]);
+  
   return (
     <TouchableOpacity style={styles.movieCard} onPress={onPress} activeOpacity={0.8}>
-      <Image source={{ uri: imageUrl }} style={styles.movieImage} />
+      {hasValidImage && !imageError ? (
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.movieImage}
+          onError={() => {
+            setImageError(true);
+            console.log('Image failed to load for movie:', movie.title);
+          }}
+        />
+      ) : (
+        <View style={styles.placeholderContainer}>
+          <Text style={styles.placeholderIcon}>🎬</Text>
+          <Text style={styles.placeholderText}>No Image</Text>
+        </View>
+      )}
       <View style={styles.movieOverlay}>
-        <Text style={styles.movieTitle}>{title}</Text>
-        <Text style={styles.moviePlatform}>{platform}</Text>
+        <Text style={styles.movieTitle} numberOfLines={2}>{movie.title}</Text>
+        <Text style={styles.moviePlatform}>{movie.year}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -39,6 +125,34 @@ interface CategoryChipProps {
   title: string;
   isActive: boolean;
   onPress: () => void;
+}
+
+interface EmptyMoviesStateProps {
+  searchQuery: string;
+  selectedCategory: string;
+}
+
+function EmptyMoviesState({ searchQuery, selectedCategory }: EmptyMoviesStateProps) {
+  return (
+    <View style={styles.emptyStateContainer}>
+      <Image 
+        source={notFoundImage} 
+        style={styles.emptyStateImage}
+        resizeMode="contain"
+      />
+      <Text style={styles.emptyStateTitle}>
+        No movies found
+      </Text>
+      <Text style={styles.emptyStateMessage}>
+        {searchQuery 
+          ? `No movies found for "${searchQuery}"` 
+          : selectedCategory !== 'All' 
+            ? `No movies found in ${selectedCategory} category`
+            : 'No movies available'
+        }
+      </Text>
+    </View>
+  );
 }
 
 function CategoryChip({ title, isActive, onPress }: CategoryChipProps) {
@@ -57,128 +171,58 @@ function CategoryChip({ title, isActive, onPress }: CategoryChipProps) {
 
 interface MoviesDetailsPageProps {
   onBackPress?: () => void;
+  onVideoPlayerOpen?: (title?: string) => void;
 }
 
-export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProps) {
+export default function MoviesDetailsPage({ onBackPress, onVideoPlayerOpen }: MoviesDetailsPageProps) {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState('New');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMovieInfo, setShowMovieInfo] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<any>(null);
 
-  const categories = ['New', 'Sci-Fi', 'Comedy', 'Romance', 'Thriller', 'Action', 'Adventure', 'Animation', 'Biography', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Sport', 'War', 'Western'];
-
-  const movies = [
-    {
-      id: 1,
-      title: 'Severance',
-      platform: 'Apple TV+',
-      imageUrl: 'https://snworksceo.imgix.net/ttd/df199939-19cc-41c1-a949-a86557ec949f.sized-1000x1000.png?w=1000&dpr=2',
-      genre: 'Drama, Sci-Fi, Thriller',
-      year: '2022',
-      duration: '45 min',
-      rating: '8.7',
-      synopsis: 'Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.',
-      cast: [
-        { name: 'Adam Scott', character: 'Mark Scout', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' },
-        { name: 'Patricia Arquette', character: 'Harmony Cobel', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' }
-      ]
-    },
-    {
-      id: 2,
-      title: 'The Last of Us',
-      platform: 'HBO Max',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BYWI3ODJlMzktY2U5NC00ZjdlLWE1MGItNWQxZDk3NWNjN2RhXkEyXkFqcGc@._V1_.jpg'
-    },
-    {
-      id: 3,
-      title: 'You',
-      platform: 'Netflix',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BODA0NDA1MzgtYmIyYS00NmYwLTlhZDYtMjczMTU1M2ZkYzdkXkEyXkFqcGc@._V1_.jpg'
-    },
-    {
-      id: 4,
-      title: 'The Handmaid\'s Tale',
-      platform: 'Hulu',
-      imageUrl: 'https://images.justwatch.com/poster/331049749/s718/season-6.jpg'
-    },
-    {
-      id: 5,
-      title: 'Adolescence',
-      platform: 'Netflix',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BNGY1YjBiNzMtYWZhNC00OWViLWE0MzItNjc4YzczOGNiM2I0XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      id: 6,
-      title: 'The Gorge',
-      platform: 'Apple TV+',
-      imageUrl: 'https://m.media-amazon.com/images/S/pv-target-images/aab0322a11698c77fe0dc30131b2ffdba59a73d3544a0b25cf5cb7d20e029f84.jpg',
-      genre: 'Adventure, Action, Sci-Fi',
-      year: '2025',
-      duration: '105 min',
-      rating: '7.2',
-      synopsis: 'Two highly-trained operatives are appointed to posts in guard towers on opposite sides of a vast and highly classified gorge, protecting the world from a mysterious evil that lurks within. They work together to keep the secret in the gorge.',
-      cast: [
-        { name: 'Miles Teller', character: 'Jeff', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' },
-        { name: 'Anya Taylor-Joy', character: 'Sharon', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' },
-        { name: 'Sigourney Weaver', character: 'Mary', imageUrl: 'https://m.media-amazon.com/images/M/MV5BZGY2ZGFkYjctY2Q4YS00YzVjLWE0YzAtYjQ4YzQ0YzQ0YzQ0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg' }
-      ]
-    },
-    {
-      id: 7,
-      title: 'The Signal',
-      platform: 'Netflix',
-      imageUrl: 'https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p26674282_b_v13_aa.jpg'
-    },
-    {
-      id: 8,
-      title: 'Nautilus',
-      platform: 'Prime Video',
-      imageUrl: 'https://upload.wikimedia.org/wikipedia/en/a/a6/Nautilus_%282024%29_poster.jpg'
-    },
-    {
-      id: 9,
-      title: 'Mobland',
-      platform: 'Paramount+',
-      imageUrl: 'https://upload.wikimedia.org/wikipedia/en/d/dc/MobLand.jpg'
-    },
-    {
-      id: 10,
-      title: 'Dune: Part Two',
-      platform: 'HBO Max',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BN2FjNmEyNWMtYzM0ZS00NjIyLTg5YzYtYThlMGVjNzE1OGViXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg'
-    },
-    {
-      id: 11,
-      title: 'Oppenheimer',
-      platform: 'Peacock',
-      imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4a/Oppenheimer_%28film%29.jpg/250px-Oppenheimer_%28film%29.jpg'
-    },
-    {
-      id: 12,
-      title: 'Barbie',
-      platform: 'HBO Max',
-      imageUrl: 'https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p13472534_p_v8_am.jpg'
-    },
-    {
-      id: 13,
-      title: 'Spider-Man: Across the Spider-Verse',
-      platform: 'Netflix',
-      imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Spider-Man-_Across_the_Spider-Verse_poster.jpg/250px-Spider-Man-_Across_the_Spider-Verse_poster.jpg'
-    },
-    {
-      id: 14,
-      title: 'Guardians of the Galaxy Vol. 3',
-      platform: 'Disney+',
-      imageUrl: 'https://resizing.flixster.com/xV7EqckHQwE9I284oqcs3OAwqHc=/fit-in/705x460/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p17845781_v_v13_ar.jpg'
-    },
-    {
-      id: 15,
-      title: 'Fast X',
-      platform: 'Peacock',
-      imageUrl: 'https://image.tmdb.org/t/p/original/pAe4mqaHI7wOS7vz4btYAiX4UVN.jpg'
-    }
+  // Fetch VOD categories from API
+  const { categories, isLoading: categoriesLoading, error: categoriesError } = useVODCategories();
+  
+  // Add "All" option to categories
+  const allCategories = [
+    { _id: 'all', category_name: 'All', category_id: 'all' },
+    ...categories
   ];
+  
+  // Function to get category ID for API calls (returns null for "All")
+  const getCategoryIdForAPI = () => {
+    if (selectedCategory === 'All') {
+      return null;
+    }
+    const category = categories.find(cat => cat.category_name === selectedCategory);
+    if (category && category.category_id) {
+      // Remove leading zeros from category_id
+      return category.category_id.replace(/^0+/, '') || '0';
+    }
+    return null;
+  };
+
+  // Debounced search
+  const debouncedSearch = useDebounce(searchQuery, 1000);
+  
+  // Fetch movies with infinite scrolling
+  const {
+    movies,
+    pagination,
+    isLoading: moviesLoading,
+    isFetching: moviesFetching,
+    error: moviesError,
+    hasNextPage,
+    loadMore,
+    refetch: refetchMovies,
+    isEndReached,
+  } = useMovies({
+    search: debouncedSearch,
+    categoryId: getCategoryIdForAPI(),
+    limit: 20,
+  });
+
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -189,7 +233,14 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
   };
 
   const handleMoviePress = (movie: any) => {
+    console.log('=== Movie Press Debug ===');
     console.log('Movie pressed:', movie.title);
+    console.log('Movie object:', movie);
+    console.log('Movie ID for API:', movie._id);
+    console.log('Movie stream_id:', movie.stream_id);
+    console.log('Movie _id:', movie._id);
+    console.log('Using _id for API call:', movie._id);
+    console.log('========================');
     setSelectedMovie(movie);
     setShowMovieInfo(true);
   };
@@ -199,14 +250,24 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
     setSelectedMovie(null);
   };
 
+  // Log category selection for future API integration
+  React.useEffect(() => {
+    const categoryId = getCategoryIdForAPI();
+    console.log('Selected category:', selectedCategory, 'Category ID for API:', categoryId);
+  }, [selectedCategory]);
+
   if (showMovieInfo && selectedMovie) {
-    return <MovieInfoPage onBackPress={handleMovieInfoBackPress} movieData={selectedMovie} />;
+    console.log('=== Rendering MovieInfoPage ===');
+    console.log('selectedMovie:', selectedMovie);
+    console.log('Passing movieId:', selectedMovie._id);
+    console.log('===============================');
+    return <MovieInfoPage onBackPress={handleMovieInfoBackPress} movieId={selectedMovie._id} onVideoPlayerOpen={onVideoPlayerOpen} />;
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardDismissWrapper style={styles.container}>
       <LinearGradient
-        colors={['#000000', '#110546', '#0B033A', '#110546', '#000000']}
+        colors={['#000000', '#160000', '#420000', '#160000', '#000000']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         locations={[0, 0.4, 0.6, 0.7, 1]}
@@ -225,7 +286,9 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Text style={styles.searchIcon}>
+                <Search size={getResponsiveIconSize(20)} color="#ffffff" /> 
+              </Text>
               <TextInput
                 style={styles.searchInput}
                 placeholder="Artists, Films, Tv shows ..."
@@ -239,38 +302,72 @@ export default function MoviesDetailsPage({ onBackPress }: MoviesDetailsPageProp
           {/* Category Chips */}
           <View style={styles.categoriesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {categories.map((category) => (
-                <CategoryChip
-                  key={category}
-                  title={category}
-                  isActive={selectedCategory === category}
-                  onPress={() => setSelectedCategory(category)}
-                />
-              ))}
+              {categoriesLoading ? (
+                <Text style={styles.loadingText}>Loading categories...</Text>
+              ) : (
+                allCategories.map((category) => (
+                  <CategoryChip
+                    key={category._id}
+                    title={category.category_name}
+                    isActive={selectedCategory === category.category_name}
+                    onPress={() => setSelectedCategory(category.category_name)}
+                  />
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
 
-        {/* Scrollable Movies Grid */}
-        <ScrollView 
-          style={styles.scrollableContent} 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContentContainer}
-        >
-          <View style={styles.moviesGrid}>
-            {movies.map((movie) => (
-              <MovieCard
-                key={movie.id}
-                title={movie.title}
-                platform={movie.platform}
-                imageUrl={movie.imageUrl}
-                onPress={() => handleMoviePress(movie)}
-              />
-            ))}
-          </View>
-        </ScrollView>
+        {/* Movies Grid with Infinite Scrolling */}
+        <View style={styles.scrollableContent}>
+          {moviesLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#420000" />
+              <Text style={styles.loadingText}>Loading movies...</Text>
+            </View>
+          ) : moviesError ? (
+            <ServerErrorScreen 
+              message="Failed to load movies. Please check your connection and try again."
+              onRetry={refetchMovies}
+            />
+          ) : movies.length === 0 ? (
+            <EmptyMoviesState 
+              searchQuery={searchQuery} 
+              selectedCategory={selectedCategory} 
+            />
+          ) : (
+            <FlatList
+              data={movies}
+              renderItem={({ item }) => (
+                <MovieCard
+                  movie={item}
+                  onPress={() => handleMoviePress(item)}
+                />
+              )}
+              keyExtractor={(item, index) => `${item._id}-${index}`}
+              numColumns={3}
+              columnWrapperStyle={styles.moviesRow}
+              contentContainerStyle={styles.moviesGrid}
+              showsVerticalScrollIndicator={false}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
+              ListFooterComponent={() => (
+                <View style={styles.footerContainer}>
+                  {moviesFetching && !moviesLoading ? (
+                    <ActivityIndicator size="small" color="#420000" />
+                  ) : isEndReached ? (
+                    <Text style={styles.endMessage}>No more movies to load</Text>
+                  ) : null}
+                </View>
+              )}
+              // Ensure proper spacing and layout
+              key={`${width}-${headerHeight}`} // Re-render when screen width or header height changes
+            />
+          )}
+        </View>
       </LinearGradient>
-    </View>
+    </KeyboardDismissWrapper>
   );
 }
 
@@ -292,75 +389,75 @@ const styles = StyleSheet.create({
   },
   scrollableContent: {
     flex: 1,
-    marginTop: 200, // Increased height to account for all sticky elements
+    marginTop: headerHeight, // Use calculated header height to prevent overlap
   },
   scrollContentContainer: {
-    paddingBottom: 120, // Extra padding for bottom navigation
+    paddingBottom: getResponsiveSpacing(40), // Reduced from 80 to 40
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: getResponsiveSpacing(20),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(20),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getResponsiveIconSize(40),
+    height: getResponsiveIconSize(40),
+    borderRadius: getResponsiveIconSize(20),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: getResponsiveSpacing(16),
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: getResponsiveIconSize(24),
     color: '#FFFFFF',
     fontWeight: '300',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: responsiveStyles.subtitle.fontSize,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(16),
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: getResponsiveSpacing(12),
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(8),
   },
   searchIcon: {
-    fontSize: 18,
-    marginRight: 12,
+    fontSize: responsiveStyles.caption.fontSize,
+    marginRight: getResponsiveSpacing(12),
     color: 'rgba(255, 255, 255, 0.6)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: '#FFFFFF',
   },
   categoriesContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsiveSpacing(16),
   },
   chip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: getResponsiveSpacing(20),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginRight: 12,
+    marginRight: getResponsiveSpacing(12),
   },
   activeChip: {
-    backgroundColor: '#A259FF',
+    backgroundColor: '#420000',
   },
   chipText: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
@@ -369,16 +466,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   moviesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
-    paddingTop: 30,
+    paddingTop: getResponsiveSpacing(50), // Increased top padding to ensure cards are visible
+    paddingBottom: getResponsivePadding(20),
   },
   movieCard: {
     width: cardWidth,
-    marginBottom: 20,
-    borderRadius: 12,
+    borderRadius: getResponsiveSpacing(12),
     overflow: 'hidden',
   },
   movieImage: {
@@ -386,22 +479,115 @@ const styles = StyleSheet.create({
     height: cardWidth * 1.5, // 3:2 aspect ratio
     backgroundColor: '#2a2a2a',
   },
+  placeholderContainer: {
+    width: '100%',
+    height: cardWidth * 1.5,
+    backgroundColor: '#2a2a2a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: getResponsiveSpacing(12),
+  },
+  placeholderIcon: {
+    fontSize: getResponsiveIconSize(32),
+    marginBottom: getResponsiveSpacing(8),
+  },
+  placeholderText: {
+    fontSize: responsiveStyles.small.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+  },
   movieOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 8,
+    padding: getResponsiveSpacing(8),
   },
   movieTitle: {
-    fontSize: 12,
+    fontSize: responsiveStyles.small.fontSize,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 2,
+    marginBottom: getResponsiveSpacing(2),
   },
   moviePlatform: {
-    fontSize: 10,
+    fontSize: responsiveStyles.tiny.fontSize,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  loadingText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontStyle: 'italic',
+  },
+  errorText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: '#FF6B6B',
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: getResponsiveSpacing(40),
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: getResponsiveSpacing(40),
+  },
+  retryButton: {
+    backgroundColor: '#420000',
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: getResponsiveSpacing(8),
+    marginTop: getResponsiveSpacing(16),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  moviesRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(20),
+    gap: getResponsiveSpacing(10),
+    // Ensure proper distribution of cards
+    alignItems: 'flex-start',
+  },
+  footerContainer: {
+    paddingVertical: getResponsivePadding(20),
+    alignItems: 'center',
+  },
+  endMessage: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontStyle: 'italic',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: getResponsiveSpacing(60),
+    paddingHorizontal: getResponsivePadding(40),
+  },
+  emptyStateImage: {
+    width: getResponsiveSpacing(120),
+    height: getResponsiveSpacing(120),
+    marginBottom: getResponsiveSpacing(24),
+    opacity: 0.8,
+  },
+  emptyStateTitle: {
+    fontSize: responsiveStyles.subtitle.fontSize,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: getResponsiveSpacing(12),
+  },
+  emptyStateMessage: {
+    fontSize: responsiveStyles.body.fontSize,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    lineHeight: getResponsiveSpacing(24),
   },
 });

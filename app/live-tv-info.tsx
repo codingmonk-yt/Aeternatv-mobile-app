@@ -1,7 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { ChevronLeft, Share2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     Dimensions,
     Image,
@@ -13,87 +15,94 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEpg } from "../src/hooks/useEpg";
+import { useOrientationLock } from "../src/hooks/useOrientationLock";
+import { useGetLiveTvStreamUrlQuery } from "../src/store/api/apiSlice";
+import { getResponsiveIconSize, getResponsivePadding, getResponsiveSpacing, responsiveStyles } from "../src/utils/responsive";
 
 const { width, height } = Dimensions.get("window");
 
 interface LiveTvInfoPageProps {
   onBackPress?: () => void;
+  streamId?: string;
   channelData?: {
-    id: number;
-    title: string;
-    platform: string;
-    imageUrl: string;
-    category?: string;
-    description?: string;
-    currentShow?: {
-      title: string;
-      time: string;
-      description: string;
-      genre: string;
-    };
-    upcomingShows?: Array<{
-      title: string;
-      time: string;
-      description: string;
-      genre: string;
-    }>;
-    isLive?: boolean;
-    viewers?: string;
+    _id: string;
+    name: string;
+    stream_id: number;
+    stream_icon: string;
+    category_id?: string;
+    status?: string;
+    provider?: string;
+    [key: string]: any;
   };
+  onVideoPlayerOpen?: (title?: string, videoUrl?: string) => void;
 }
 
 export default function LiveTvInfoPage({
   onBackPress,
+  streamId,
   channelData,
+  onVideoPlayerOpen,
 }: LiveTvInfoPageProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  
+  // Lock orientation to portrait
+  useOrientationLock();
+
+  // Fetch EPG data
+  const {
+    epgListings,
+    providerName,
+    isLoading: epgLoading,
+    error: epgError,
+  } = useEpg({
+    streamId: streamId || "",
+    enabled: !!streamId,
+  });
 
   // Default channel data if none provided
   const channel = channelData || {
-    id: 1,
-    title: "CNN",
-    platform: "Live TV",
-    imageUrl: "https://download.logo.wine/logo/CNN/CNN-Logo.wine.png",
-    category: "News",
-    description:
-      "CNN is a multinational news-based pay television channel headquartered in Atlanta, Georgia. CNN is widely credited with introducing the concept of 24-hour news coverage.",
-    currentShow: {
-      title: "CNN Newsroom",
-      time: "2:00 PM - 4:00 PM",
-      description: "Breaking news and live updates from around the world.",
-      genre: "News",
-    },
-    upcomingShows: [
-      {
-        title: "Anderson Cooper 360°",
-        time: "4:00 PM - 5:00 PM",
-        description: "In-depth analysis and interviews with Anderson Cooper.",
-        genre: "News",
-      },
-      {
-        title: "The Lead with Jake Tapper",
-        time: "5:00 PM - 6:00 PM",
-        description: "Political news and analysis with Jake Tapper.",
-        genre: "News",
-      },
-      {
-        title: "Situation Room",
-        time: "6:00 PM - 7:00 PM",
-        description: "Breaking news and political coverage.",
-        genre: "News",
-      },
-      {
-        title: "Erin Burnett OutFront",
-        time: "7:00 PM - 8:00 PM",
-        description: "News analysis and interviews with Erin Burnett.",
-        genre: "News",
-      },
-    ],
-    isLive: true,
-    viewers: "2.4M",
+    _id: "1",
+    name: "CNN",
+    stream_id: 1,
+    stream_icon: "https://download.logo.wine/logo/CNN/CNN-Logo.wine.png",
+    category_id: "News",
+    status: "ACTIVE",
   };
+
+  // Live TV Stream URL API call - only trigger when we have provider and stream_id
+  const { 
+    data: liveTvStreamData, 
+    isLoading: isLiveTvStreamLoading, 
+    error: liveTvStreamError,
+    refetch: refetchLiveTvStream 
+  } = useGetLiveTvStreamUrlQuery(
+    { 
+      providerId: channelData?.provider || '', 
+      streamId: channelData?.stream_id?.toString() || '' 
+    },
+    { 
+      skip: !channelData?.provider || !channelData?.stream_id || !showVideoPlayer 
+    }
+  );
+
+  // Handle live TV stream URL response
+  React.useEffect(() => {
+    if (liveTvStreamData?.success && liveTvStreamData.streamUrl) {
+      setStreamUrl(liveTvStreamData.streamUrl);
+    }
+  }, [liveTvStreamData]);
+
+  // Handle video player opening when stream URL is ready
+  React.useEffect(() => {
+    if (showVideoPlayer && streamUrl && onVideoPlayerOpen && channel) {
+      onVideoPlayerOpen(channel.name, streamUrl);
+    }
+  }, [showVideoPlayer, streamUrl, onVideoPlayerOpen, channel]);
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -104,15 +113,29 @@ export default function LiveTvInfoPage({
   };
 
   const handlePlayPress = () => {
-    console.log("Play button pressed for:", channel.title);
-    // TODO: Navigate to live TV player
+    console.log("Play button pressed for:", channel.name);
+    console.log("Provider:", channelData?.provider);
+    console.log("Stream ID:", channelData?.stream_id);
+    
+    // Trigger stream URL API call
+    setShowVideoPlayer(true);
+  };
+
+  const handleCloseVideoPlayer = () => {
+    setShowVideoPlayer(false);
+    setStreamUrl(null);
   };
 
   const handleSharePress = async () => {
     try {
+      const currentShow = epgListings[0];
+      const message = currentShow
+        ? `Check out "${channel.name}" - ${currentShow.title_decoded} is now live!`
+        : `Check out "${channel.name}" - Live TV`;
+
       const result = await Share.share({
-        message: `Check out "${channel.title}" - ${channel.currentShow?.title} is now live!`,
-        title: channel.title,
+        message,
+        title: channel.name,
       });
 
       if (result.action === Share.sharedAction) {
@@ -129,10 +152,86 @@ export default function LiveTvInfoPage({
     // TODO: Implement bookmark functionality
   };
 
-  const truncatedDescription =
-    channel.description && channel.description.length > 150
-      ? channel.description.substring(0, 150) + "..."
-      : channel.description;
+  // Utility functions for EPG data
+  const formatTime = (timestamp: string) => {
+    const date = new Date(parseInt(timestamp) * 1000);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const formatDate = (timestamp: string) => {
+    const date = new Date(parseInt(timestamp) * 1000);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getCurrentShow = () => {
+    const now = Math.floor(Date.now() / 1000);
+    return epgListings.find((show) => {
+      const start = parseInt(show.start_timestamp);
+      const end = parseInt(show.stop_timestamp);
+      return now >= start && now <= end;
+    });
+  };
+
+  const getUpcomingShows = () => {
+    const now = Math.floor(Date.now() / 1000);
+    return epgListings
+      .filter((show) => parseInt(show.start_timestamp) > now)
+      .slice(0, 5);
+  };
+
+  const currentShow = getCurrentShow();
+  const upcomingShows = getUpcomingShows();
+
+  // Show loading state when fetching stream URL
+  if (showVideoPlayer && isLiveTvStreamLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={styles.loadingText}>Loading live stream...</Text>
+        <TouchableOpacity 
+          style={styles.cancelButton} 
+          onPress={handleCloseVideoPlayer}
+        >
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Show error state if stream URL fetch failed
+  if (showVideoPlayer && liveTvStreamError) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + getResponsiveSpacing(10) }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleCloseVideoPlayer}
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Failed to load live stream</Text>
+          <Text style={styles.errorMessage}>
+            Unable to get live stream. Please try again.
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => refetchLiveTvStream()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -145,7 +244,7 @@ export default function LiveTvInfoPage({
           {/* Image with Gradient Overlay */}
           <View style={styles.imageContainer}>
             <Image
-              source={{ uri: channel.imageUrl }}
+              source={{ uri: channel.stream_icon }}
               style={styles.posterImage}
             />
             <LinearGradient
@@ -164,12 +263,14 @@ export default function LiveTvInfoPage({
           </View>
 
           {/* Header with back button and action buttons */}
-          <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.header, { paddingTop: insets.top }]}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleBackPress}
             >
-              <Text style={styles.backIcon}>‹</Text>
+              <Text style={styles.backIcon}>
+                <ChevronLeft color="#ffffff" size={getResponsiveIconSize(20)} />
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.headerActions}>
@@ -177,118 +278,116 @@ export default function LiveTvInfoPage({
                 style={styles.actionButton}
                 onPress={handleSharePress}
               >
-                <Text style={styles.actionIcon}>↗</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleBookmarkPress}
-              >
-                <Text style={styles.actionIcon}>♡</Text>
+                <Text style={styles.actionIcon}>
+                  <Share2 color="#ffffff" size={getResponsiveIconSize(20)} />
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Platform Logo */}
-          <View style={styles.platformLogo}>
-            <Text style={styles.platformText}>{channel.platform}</Text>
-          </View>
+          {/* Play Button - Removed from here, will be floating at bottom */}
+        </View>
 
-          {/* Live Status Indicator */}
-          <View style={styles.liveIndicator}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
-            <Text style={styles.viewersText}>{channel.viewers} watching</Text>
-          </View>
-
-          {/* Play Button */}
+        {/* Play Button - Floating at bottom of banner */}
+        <View style={styles.playButtonContainer}>
           <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
             <LinearGradient
-              colors={["#FF4444", "#CC0000"]}
+              colors={["#420000", "#2D0000", "#1A0000"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.playButtonGradient}
             >
               <Text style={styles.playIcon}>▶</Text>
+              <Text style={styles.playText}>Play</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
         {/* Channel Details */}
         <View style={styles.channelDetails}>
-          <Text style={styles.channelTitleText}>{channel.title}</Text>
-          <Text style={styles.categoryText}>{channel.category}</Text>
+          <Text style={styles.channelTitleText}>{channel.name}</Text>
+          <Text style={styles.categoryText}>Channel ID: {channel.stream_id}</Text>
 
-          {/* Info Boxes */}
-          <View style={styles.infoBoxes}>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Status</Text>
-              <Text style={styles.infoValue}>🔴 Live</Text>
+          {/* EPG Loading State */}
+          {epgLoading && (
+            <View style={styles.epgLoadingContainer}>
+              <ActivityIndicator size="small" color="#420000" />
+              <Text style={styles.epgLoadingText}>
+                Loading program guide...
+              </Text>
             </View>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Viewers</Text>
-              <Text style={styles.infoValue}>{channel.viewers}</Text>
-            </View>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Category</Text>
-              <Text style={styles.infoValue}>{channel.category}</Text>
-            </View>
-          </View>
+          )}
 
-          {/* Description */}
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionText}>
-              {showFullDescription ? channel.description : truncatedDescription}
-            </Text>
-            {channel.description && channel.description.length > 150 && (
-              <TouchableOpacity
-                onPress={() => setShowFullDescription(!showFullDescription)}
-              >
-                <Text style={styles.readMoreText}>
-                  {showFullDescription ? "Read less" : "Read more"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {/* EPG Error State */}
+          {epgError && (
+            <View style={styles.epgErrorContainer}>
+              <Text style={styles.epgErrorText}>
+                Failed to load program guide
+              </Text>
+            </View>
+          )}
 
           {/* Current Show */}
-          {channel.currentShow && (
+          {currentShow && (
             <View style={styles.currentShowContainer}>
               <Text style={styles.sectionTitle}>Currently Playing</Text>
               <View style={styles.currentShowCard}>
                 <View style={styles.currentShowHeader}>
                   <Text style={styles.currentShowTitle}>
-                    {channel.currentShow.title}
+                    {currentShow.title_decoded}
                   </Text>
                   <Text style={styles.currentShowTime}>
-                    {channel.currentShow.time}
+                    {formatTime(currentShow.start_timestamp)} -{" "}
+                    {formatTime(currentShow.stop_timestamp)}
                   </Text>
                 </View>
                 <Text style={styles.currentShowGenre}>
-                  {channel.currentShow.genre}
+                  {formatDate(currentShow.start_timestamp)}
                 </Text>
                 <Text style={styles.currentShowDescription}>
-                  {channel.currentShow.description}
+                  {currentShow.description_decoded}
                 </Text>
               </View>
             </View>
           )}
 
           {/* Program Guide */}
-          <View style={styles.programGuideContainer}>
-            <Text style={styles.sectionTitle}>Program Guide</Text>
-            {channel.upcomingShows?.map((show, index) => (
-              <View key={index} style={styles.programItem}>
-                <View style={styles.programTime}>
-                  <Text style={styles.programTimeText}>{show.time}</Text>
+          {upcomingShows.length > 0 && (
+            <View style={styles.programGuideContainer}>
+              <Text style={styles.sectionTitle}>Upcoming Programs</Text>
+              {upcomingShows.map((show, index) => (
+                <View key={show.id} style={styles.programItem}>
+                  <View style={styles.programTime}>
+                    <Text style={styles.programTimeText}>
+                      {formatTime(show.start_timestamp)}
+                    </Text>
+                    <Text style={styles.programDateText}>
+                      {formatDate(show.start_timestamp)}
+                    </Text>
+                  </View>
+                  <View style={styles.programDetails}>
+                    <Text style={styles.programTitle}>
+                      {show.title_decoded}
+                    </Text>
+                    <Text style={styles.programDuration}>
+                      {formatTime(show.start_timestamp)} -{" "}
+                      {formatTime(show.stop_timestamp)}
+                    </Text>
+                    <Text style={styles.programDescription}>
+                      {show.description_decoded}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.programDetails}>
-                  <Text style={styles.programTitle}>{show.title}</Text>
-                  <Text style={styles.programGenre}>{show.genre}</Text>
-                  <Text style={styles.programDescription}>{show.description}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
+
+          {/* No EPG Data */}
+          {!epgLoading && !epgError && epgListings.length === 0 && (
+            <View style={styles.noEpgContainer}>
+              <Text style={styles.noEpgText}>No program guide available</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -331,14 +430,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(20),
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getResponsiveIconSize(40),
+    height: getResponsiveIconSize(40),
+    borderRadius: getResponsiveIconSize(20),
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     justifyContent: "center",
     alignItems: "center",
@@ -350,12 +449,12 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: getResponsiveSpacing(12),
   },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getResponsiveIconSize(40),
+    height: getResponsiveIconSize(40),
+    borderRadius: getResponsiveIconSize(20),
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     justifyContent: "center",
     alignItems: "center",
@@ -391,7 +490,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.7)",
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 12,
     borderRadius: 6,
     zIndex: 5,
   },
@@ -412,104 +511,114 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 10,
   },
-  playButton: {
+  playButtonContainer: {
     position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: [{ translateX: -30 }, { translateY: -30 }],
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    zIndex: 5,
-  },
-  playButtonGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
+    top: height * 0.6 - getResponsiveSpacing(40), // Position at bottom of banner area
+    left: 0,
+    right: 0,
     alignItems: "center",
-    shadowColor: "#FF4444",
+    zIndex: 10,
+  },
+  playButton: {
+    width: getResponsiveSpacing(200),
+    height: getResponsiveSpacing(60),
+    borderRadius: getResponsiveSpacing(30),
+    shadowColor: "#420000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  playButtonGradient: {
+    width: getResponsiveSpacing(200),
+    height: getResponsiveSpacing(60),
+    borderRadius: getResponsiveSpacing(30),
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: getResponsivePadding(24),
   },
   playIcon: {
-    fontSize: 24,
+    fontSize: getResponsiveIconSize(20),
     color: "#FFFFFF",
-    marginLeft: 2,
+    marginRight: getResponsiveSpacing(8),
+  },
+  playText: {
+    fontSize: responsiveStyles.subtitle.fontSize,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   channelDetails: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsiveSpacing(100),
     backgroundColor: "#000000",
-    paddingTop: 20,
+    paddingTop: getResponsiveSpacing(50), // Added back vertical padding
   },
   channelTitleText: {
-    fontSize: 28,
+    fontSize: responsiveStyles.title.fontSize,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(8),
   },
   categoryText: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: "rgba(255, 255, 255, 0.7)",
-    marginBottom: 20,
+    marginBottom: getResponsiveSpacing(20),
   },
   infoBoxes: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: getResponsiveSpacing(24),
   },
   infoBox: {
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: getResponsiveSpacing(8),
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: getResponsiveSpacing(4),
     alignItems: "center",
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.6)",
-    marginBottom: 4,
+    marginBottom: getResponsiveSpacing(4),
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: "#FFFFFF",
     fontWeight: "600",
   },
   descriptionContainer: {
-    marginBottom: 32,
+    marginBottom: getResponsiveSpacing(32),
   },
   descriptionText: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     color: "rgba(255, 255, 255, 0.9)",
     lineHeight: 24,
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(8),
   },
   readMoreText: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.7)",
     textDecorationLine: "underline",
   },
   currentShowContainer: {
-    marginBottom: 32,
+    marginBottom: getResponsiveSpacing(32),
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: responsiveStyles.subtitle.fontSize,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 16,
+    marginBottom: getResponsiveSpacing(16),
   },
   currentShowCard: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: getResponsiveSpacing(12),
+    padding: getResponsivePadding(16),
     borderLeftWidth: 4,
     borderLeftColor: "#FF4444",
   },
@@ -520,43 +629,43 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   currentShowTitle: {
-    fontSize: 18,
+    fontSize: responsiveStyles.body.fontSize,
     fontWeight: "bold",
     color: "#FFFFFF",
     flex: 1,
-    marginRight: 12,
+    marginRight: getResponsiveSpacing(12),
   },
   currentShowTime: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.7)",
     fontWeight: "600",
   },
   currentShowGenre: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "#FF4444",
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: getResponsiveSpacing(8),
   },
   currentShowDescription: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.8)",
     lineHeight: 20,
   },
   programGuideContainer: {
-    marginBottom: 20,
+    marginBottom: getResponsiveSpacing(20),
   },
   programItem: {
     flexDirection: "row",
-    paddingVertical: 16,
+    paddingVertical: getResponsivePadding(16),
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   programTime: {
     width: 80,
-    marginRight: 16,
+    marginRight: getResponsiveSpacing(16),
   },
   programTimeText: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.7)",
     fontWeight: "600",
   },
@@ -564,19 +673,116 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   programTitle: {
-    fontSize: 16,
+    fontSize: responsiveStyles.body.fontSize,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 4,
+    marginBottom: getResponsiveSpacing(4),
   },
   programGenre: {
-    fontSize: 12,
+    fontSize: responsiveStyles.small.fontSize,
     color: "rgba(255, 255, 255, 0.6)",
-    marginBottom: 4,
+    marginBottom: getResponsiveSpacing(4),
   },
   programDescription: {
-    fontSize: 14,
+    fontSize: responsiveStyles.caption.fontSize,
     color: "rgba(255, 255, 255, 0.8)",
     lineHeight: 18,
+  },
+  programDateText: {
+    fontSize: responsiveStyles.tiny.fontSize,
+    color: "rgba(255, 255, 255, 0.5)",
+    marginTop: getResponsiveSpacing(2),
+  },
+  programDuration: {
+    fontSize: responsiveStyles.small.fontSize,
+    color: "rgba(255, 255, 255, 0.6)",
+    marginBottom: getResponsiveSpacing(4),
+  },
+  epgLoadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(20),
+  },
+  epgLoadingText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: "rgba(255, 255, 255, 0.6)",
+    marginLeft: getResponsiveSpacing(8),
+  },
+  epgErrorContainer: {
+    alignItems: "center",
+    paddingVertical: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(20),
+  },
+  epgErrorText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: "#FF6B6B",
+    fontStyle: "italic",
+  },
+  noEpgContainer: {
+    alignItems: "center",
+    paddingVertical: getResponsivePadding(20),
+    marginBottom: getResponsiveSpacing(20),
+  },
+  noEpgText: {
+    fontSize: responsiveStyles.caption.fontSize,
+    color: "rgba(255, 255, 255, 0.6)",
+    fontStyle: "italic",
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#FFFFFF",
+    fontSize: responsiveStyles.body.fontSize,
+    marginTop: getResponsiveSpacing(16),
+  },
+  cancelButton: {
+    marginTop: getResponsiveSpacing(20),
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: getResponsiveSpacing(8),
+  },
+  cancelButtonText: {
+    color: "#FFFFFF",
+    fontSize: responsiveStyles.body.fontSize,
+    fontWeight: "600",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  errorTitle: {
+    fontSize: responsiveStyles.title.fontSize,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: getResponsiveSpacing(8),
+    textAlign: "center",
+  },
+  errorMessage: {
+    fontSize: responsiveStyles.body.fontSize,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    marginBottom: getResponsiveSpacing(24),
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: "#420000",
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: getResponsiveSpacing(8),
+    alignSelf: "center",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: responsiveStyles.body.fontSize,
+    fontWeight: "600",
   },
 });

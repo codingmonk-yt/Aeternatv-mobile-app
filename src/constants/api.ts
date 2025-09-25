@@ -1,7 +1,7 @@
 // API Configuration Constants
 export const API_CONFIG = {
   // Base URL - update this with your actual base URL
-  BASE_URL: 'http://api.aeternatv.com', // Replace with your actual base URL
+  BASE_URL: 'http://api.aeternatv.com', // HTTP for server compatibility
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000, // 1 second

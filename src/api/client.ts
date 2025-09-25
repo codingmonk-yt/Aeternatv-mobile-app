@@ -21,7 +21,9 @@ const createApiClient = (): AxiosInstance => {
       //   config.headers.Authorization = `Bearer ${token}`;
       // }
       
-      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+      console.log('📡 Full URL:', `${config.baseURL}${config.url}`);
+      console.log('🔗 Protocol:', config.baseURL?.startsWith('https') ? 'HTTPS' : 'HTTP');
       return config;
     },
     (error) => {
@@ -37,7 +39,13 @@ const createApiClient = (): AxiosInstance => {
       return response;
     },
     (error) => {
-      console.error('❌ Response Error:', error.response?.status, error.message);
+      console.error('❌ Response Error Details:');
+      console.error('Status:', error.response?.status);
+      console.error('Message:', error.message);
+      console.error('Code:', error.code);
+      console.error('URL:', error.config?.url);
+      console.error('Base URL:', error.config?.baseURL);
+      console.error('Full Error:', error);
       
       // Handle common errors
       if (error.response?.status === 401) {
@@ -47,6 +55,10 @@ const createApiClient = (): AxiosInstance => {
         console.log('🚫 Forbidden - insufficient permissions');
       } else if (error.response?.status >= 500) {
         console.log('🔥 Server Error - please try again later');
+      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        console.log('🌐 Network Error - check internet connection and server availability');
+      } else if (error.code === 'ECONNREFUSED') {
+        console.log('🔌 Connection Refused - server may be down or URL incorrect');
       }
       
       return Promise.reject(error);

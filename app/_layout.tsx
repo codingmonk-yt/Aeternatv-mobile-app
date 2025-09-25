@@ -1,10 +1,11 @@
 import { Roboto_400Regular, Roboto_500Medium, Roboto_700Bold, Roboto_900Black, useFonts } from '@expo-google-fonts/roboto';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '../components/BottomNavigation';
 import SplashScreen from '../src/components/SplashScreen';
+import { useAndroidBackButton } from '../src/hooks/useAndroidBackButton';
 import { useOrientationLock } from '../src/hooks/useOrientationLock';
 import { ReduxProvider } from '../src/providers/ReduxProvider';
 import HomePage from './home';
@@ -31,6 +32,9 @@ export default function RootLayout() {
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [videoPlayerTitle, setVideoPlayerTitle] = useState<string>('');
   const [videoPlayerUrl, setVideoPlayerUrl] = useState<string>('');
+  
+  // Navigation stack to track screen history
+  const [navigationStack, setNavigationStack] = useState<string[]>(['home']);
 
   const handleSplashFinish = () => {
     setShowSplash(false);
@@ -41,13 +45,79 @@ export default function RootLayout() {
     setVideoPlayerUrl(videoUrl || '');
     setShowVideoPlayer(true);
     setHideBottomNav(true);
+    // Add video player to navigation stack
+    setNavigationStack(prev => [...prev, 'video-player']);
   };
 
   const handleVideoPlayerClose = () => {
     setShowVideoPlayer(false);
     setHideBottomNav(false);
-    setVideoPlayerUrl('');
+    // Remove video player from navigation stack
+    setNavigationStack(prev => prev.filter(screen => screen !== 'video-player'));
   };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Add to navigation stack if it's a new screen
+    setNavigationStack(prev => {
+      if (prev[prev.length - 1] !== tab) {
+        return [...prev, tab];
+      }
+      return prev;
+    });
+  };
+
+  // Android back button handling
+  const handleAndroidBackPress = () => {
+    // If video player is open, close it first
+    if (showVideoPlayer) {
+      handleVideoPlayerClose();
+      return true; // Handled
+    }
+
+    // If we have more than one screen in the stack, go back
+    if (navigationStack.length > 1) {
+      const newStack = [...navigationStack];
+      newStack.pop(); // Remove current screen
+      const previousScreen = newStack[newStack.length - 1];
+      
+      setNavigationStack(newStack);
+      setActiveTab(previousScreen);
+      setHideBottomNav(false);
+      return true; // Handled
+    }
+
+    // If we're on the home screen, show exit confirmation
+    if (activeTab === 'home') {
+      Alert.alert(
+        'Exit App',
+        'Are you sure you want to exit?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Exit',
+            onPress: () => {
+              // This will trigger the default Android back behavior (exit app)
+              return false;
+            },
+          },
+        ]
+      );
+      return true; // Handled (showed dialog)
+    }
+
+    // Default behavior for other cases
+    return false;
+  };
+
+  // Use the Android back button hook
+  useAndroidBackButton({
+    onBackPress: handleAndroidBackPress,
+    enabled: !showSplash, // Disable during splash screen
+  });
 
   const renderPage = () => {
     switch (activeTab) {
@@ -109,7 +179,7 @@ export default function RootLayout() {
           <View style={{ flex: 1 }}>
             {renderPage()}
           </View>
-          {!hideBottomNav && <BottomNavigation activeTab={activeTab} onTabPress={setActiveTab} />}
+          {!hideBottomNav && <BottomNavigation activeTab={activeTab} onTabPress={handleTabChange} />}
         </SafeAreaView>
       </View>
     </ReduxProvider>
